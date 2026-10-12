@@ -13,7 +13,7 @@ if ! command -v ldid >/dev/null 2>&1; then
 fi
 
 make clean >/dev/null 2>&1 || true
-make package FINALPACKAGE=1
+make
 
 APP=$(find .theos -maxdepth 5 -name "Parlz.app" -type d | head -n 1)
 if [ -z "$APP" ]; then

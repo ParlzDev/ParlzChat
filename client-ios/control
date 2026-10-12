@@ -1,0 +1,9 @@
+Package: com.parlz.chatter
+Name: Parlz
+Version: 1.0
+Architecture: iphoneos-arm64
+Description: Parlz 聊天客户端（WKWebView 壳）
+Maintainer: ParlzDev
+Author: ParlzDev
+Section: Applications
+Depends: firmware (>= 15.0)

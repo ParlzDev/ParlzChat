@@ -6,7 +6,7 @@ APP=dist/Parlz.app
 DMG=dist/Parlz.dmg
 
 if [ ! -d "$APP" ]; then
-    echo "缺少 $APP，先执行 ./build.sh"
+    echo "缺少 ${APP}，先执行 ./build.sh"
     exit 1
 fi
 
@@ -20,7 +20,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
     ln -s /Applications "$STAGE/Applications"
     hdiutil create -volname Parlz -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
     rm -rf "$STAGE"
-    echo "已生成 $DMG（拖入 Applications 即安装）"
+    echo "已生成 ${DMG}（拖入 Applications 即安装）"
     exit 0
 fi
 
