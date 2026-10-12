@@ -413,6 +413,7 @@ public class MainActivity extends Activity {
         if (web != null) {
             web.onPause();
         }
+        CookieManager.getInstance().flush();
         super.onPause();
     }
 
@@ -422,6 +423,7 @@ public class MainActivity extends Activity {
             web.destroy();
             web = null;
         }
+        CookieManager.getInstance().flush();
         super.onDestroy();
     }
 }

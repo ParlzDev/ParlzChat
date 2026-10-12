@@ -14,11 +14,16 @@ if (ob_get_level() === 0) {
 }
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
+    $parlzHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+    ini_set('session.gc_maxlifetime', '31536000');
+    ini_set('session.cookie_lifetime', '31536000');
     session_name('parlz_sid');
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => 31536000,
         'path' => '/',
         'httponly' => true,
+        'secure' => $parlzHttps,
         'samesite' => 'Lax',
     ]);
     session_start();
