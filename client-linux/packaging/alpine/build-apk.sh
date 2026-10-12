@@ -17,7 +17,7 @@ for f in resources/icons/parlz-*.png; do
     size=${size#parlz-}
     install -Dm644 "$f" "$ROOT/usr/share/icons/hicolor/${size}x${size}/apps/parlz.png"
 done
-cp resources/parlz.png "$ROOT/usr/share/pixmaps/parlz.png"
+install -Dm644 resources/parlz.png "$ROOT/usr/share/pixmaps/parlz.png"
 
 SIZE=$(du -sb "$ROOT" | cut -f1)
 

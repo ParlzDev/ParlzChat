@@ -38,9 +38,9 @@ jobs:
           WEBKIT=$(pkg-config --exists webkit2gtk-4.1 && echo webkit2gtk-4.1 || echo webkit2gtk-4.0)
           echo "pkg-config 名称: $WEBKIT"
           echo "WebKitGTK 版本: $(pkg-config --modversion $WEBKIT)"
-          INC=$(pkg-config --variable=includedir $WEBKIT)
-          ls -1 "$INC/webkit2/" | head -40
-          ls -1 "$INC/webkit2/" | grep -i network || echo "没有 WebKitNetworkSession 头文件"
+          INC=$(pkg-config --cflags-only-I $WEBKIT | tr ' ' '\n' | grep webkitgtk | head -1 | sed 's/^-I//')
+          echo "头文件目录: $INC"
+          ls -1 "$INC/webkit2/" | grep -i network || echo "没有 WebKitNetworkSession 头文件（会用 WebKitWebContext 回退）"
 
       - name: 编译
         run: |
