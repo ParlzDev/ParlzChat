@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.parlz.chatter</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Parlz</name>
+  <summary>Parlz 聊天客户端</summary>
+  <summary xml:lang="en">Chat client for Parlz</summary>
+  <description>
+    <p>Parlz 的桌面客户端（GTK + WebKitGTK 外壳），加载 https://chat.parlz.com 的页面。</p>
+    <p>支持私聊、群组、朋友圈、语音与视频通话、文件收发。</p>
+  </description>
+  <launchable type="desktop-id">parlz.desktop</launchable>
+  <url type="homepage">https://chat.parlz.com</url>
+  <provides>
+    <binary>parlz</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-10-12"/>
+  </releases>
+</component>

@@ -253,7 +253,7 @@ export async function startSession(user, route) {
 }
 
 function wireNativeGesture() {
-  const bridge = window.ParlzAndroid ?? window.ParlzIOS;
+  const bridge = window.ParlzAndroid ?? window.ParlzIOS ?? window.ParlzLinux;
   if (!bridge || typeof bridge.openServerDialog !== 'function') {
     return;
   }

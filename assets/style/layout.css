@@ -549,3 +549,10 @@
     bottom: calc(76px + env(safe-area-inset-bottom));
   }
 }
+
+.panel-head,
+.page-head,
+.chat-head,
+.drawer-head {
+  border-top: env(safe-area-inset-top) solid transparent;
+}

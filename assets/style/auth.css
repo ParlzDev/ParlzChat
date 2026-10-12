@@ -137,7 +137,7 @@
 
   .auth-brand {
     justify-content: flex-start;
-    padding: 40px 24px 4px;
+    padding: calc(40px + env(safe-area-inset-top)) 24px 4px;
     background: transparent;
     border-right: none;
   }

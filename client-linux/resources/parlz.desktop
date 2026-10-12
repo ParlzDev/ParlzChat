@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Parlz
+Name[zh_CN]=Parlz 聊天
+Comment=Chat client for Parlz
+Comment[zh_CN]=Parlz 聊天客户端
+Exec=parlz %u
+Icon=parlz
+Terminal=false
+Categories=Network;InstantMessaging;Chat;
+Keywords=chat;im;parlz;
+StartupNotify=true
+StartupWMClass=Parlz

@@ -59,7 +59,7 @@ export function safeFileName(name) {
 }
 
 function nativeSaveBridge() {
-  const bridge = window.ParlzAndroid ?? window.ParlzIOS;
+  const bridge = window.ParlzAndroid ?? window.ParlzIOS ?? window.ParlzLinux;
   return bridge && typeof bridge.beginSave === 'function' && typeof bridge.chunkSave === 'function' && typeof bridge.finishSave === 'function'
     ? bridge
     : null;

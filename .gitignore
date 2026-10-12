@@ -21,6 +21,8 @@ client-android/keystore.properties
 client-ios/.theos/
 client-ios/dist/
 client-mac/dist/
+client-linux/build/
+client-linux/dist/
 client/target/
 
 *.jks
