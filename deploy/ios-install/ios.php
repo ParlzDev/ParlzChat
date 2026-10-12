@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 const PARLZ_IOS_HOST = 'chat.parlz.com';
-const PARLZ_IOS_IPA = '/assets/uploads/parlz-ios-1.0.ipa';
+const PARLZ_IOS_IPA = '/assets/uploads/parlz-ios-1.0.3.ipa';
 const PARLZ_IOS_BUNDLE = 'com.parlz.chatter';
-const PARLZ_IOS_VERSION = '1.0';
-const PARLZ_IOS_BUILD = '1';
+const PARLZ_IOS_VERSION = '1.0.3';
+const PARLZ_IOS_BUILD = '3';
 const PARLZ_IOS_TITLE = 'Parlz';
 
 $base = 'https://' . PARLZ_IOS_HOST;
@@ -60,13 +60,14 @@ li b{color:#0b2415}
 <div class="badge"><div class="bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
 <h1>Parlz for iPhone</h1>
 <p class="sub">版本 <?= PARLZ_IOS_VERSION ?> · 需要 iOS 15 或更高</p>
-<a class="install" href="<?= htmlspecialchars($install, ENT_QUOTES) ?>">安装 Parlz</a>
+<a class="install" href="<?= htmlspecialchars($install, ENT_QUOTES) ?>">安装 / 覆盖重装 Parlz</a>
 <ol>
 <li>必须用 <b>Safari</b> 打开本页（微信/QQ 内置浏览器不行）</li>
 <li>点上面的按钮，弹窗里选「<b>安装</b>」</li>
 <li>回到桌面等它装完</li>
 </ol>
 <div class="note">
+<b>已经装过旧版？</b>直接点上面的按钮就是覆盖重装，聊天记录不丢。<br><br>
 装完首次打开若提示「未受信任的开发者」：<br>
 设置 → 通用 → VPN与设备管理 → 信任你的开发者账号<br><br>
 本 App 只能装到已登记 UDID 的设备上，换新手机需要重新登记。
