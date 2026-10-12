@@ -187,16 +187,7 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     NSURL *url = navigationAction.request.URL;
     NSString *scheme = url.scheme.lowercaseString;
-    if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) {
-        if ([self isAppUrl:url]) {
-            decisionHandler(WKNavigationActionPolicyAllow);
-            return;
-        }
-        [[NSWorkspace sharedWorkspace] openURL:url];
-        decisionHandler(WKNavigationActionPolicyCancel);
-        return;
-    }
-    if (url != nil && ![scheme isEqualToString:@"about"] && ![scheme isEqualToString:@"blob"] && ![scheme isEqualToString:@"data"]) {
+    if ([scheme isEqualToString:@"mailto"]) {
         [[NSWorkspace sharedWorkspace] openURL:url];
         decisionHandler(WKNavigationActionPolicyCancel);
         return;

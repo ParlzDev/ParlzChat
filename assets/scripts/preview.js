@@ -64,17 +64,13 @@ function shell(title, extra, bodyHtml) {
   return node;
 }
 
-function externLink(url) {
-  return '<a class="embed-open" href="' + esc(absolute(url)) + '" target="_blank" rel="noopener" title="在浏览器打开">' + icon('external') + '</a>';
-}
-
 function openFrame(url, title) {
   const internal = url.origin === window.location.origin;
-  shell(hostTitle(url, title), externLink(url), '<iframe class="embed-frame" src="' + esc(frameSrc(url, internal)) + '"></iframe>');
+  shell(hostTitle(url, title), '', '<iframe class="embed-frame" src="' + esc(frameSrc(url, internal)) + '"></iframe>');
 }
 
 function showRisk(url, title) {
-  const node = shell(hostTitle(url, title), externLink(url),
+  const node = shell(hostTitle(url, title), '',
     '<div class="embed-wrap"><div class="embed-card">' +
       '<h3 class="section-title">即将打开外部网站</h3>' +
       '<p class="setting-desc">这个链接不在 Parlz 站内，请确认来源可信再继续</p>' +

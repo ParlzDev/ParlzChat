@@ -190,15 +190,11 @@ public class MainActivity extends Activity {
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
             String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
-            if (scheme.equals("http") || scheme.equals("https")) {
-                if (isAppHost(uri)) {
-                    return false;
-                }
+            if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("sms")) {
                 openExternal(uri);
                 return true;
             }
-            openExternal(uri);
-            return true;
+            return false;
         }
 
         @Override

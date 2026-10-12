@@ -290,42 +290,17 @@ static void on_script_message(WebKitUserContentManager *manager, WebKitJavascrip
 }
 #endif
 
-static gboolean is_internal(const gchar *uri)
-{
-    GUri *base = g_uri_parse(g_server, G_URI_FLAGS_NONE, NULL);
-    GUri *target = g_uri_parse(uri, G_URI_FLAGS_NONE, NULL);
-    gboolean same = FALSE;
-    if (base != NULL && target != NULL) {
-        const gchar *want = g_uri_get_host(base);
-        const gchar *have = g_uri_get_host(target);
-        if (want != NULL && have != NULL) {
-            same = g_ascii_strcasecmp(want, have) == 0;
-        }
-    }
-    if (base != NULL) {
-        g_uri_unref(base);
-    }
-    if (target != NULL) {
-        g_uri_unref(target);
-    }
-    return same;
-}
-
-static gboolean goes_outside(const gchar *uri)
+static gboolean is_system_scheme(const gchar *uri)
 {
     gchar *scheme = g_uri_parse_scheme(uri);
     if (scheme == NULL) {
-        return TRUE;
+        return FALSE;
     }
-    gboolean internal;
-    if (g_ascii_strcasecmp(scheme, "http") == 0 || g_ascii_strcasecmp(scheme, "https") == 0) {
-        internal = is_internal(uri);
-    } else {
-        internal = g_ascii_strcasecmp(scheme, "about") == 0 || g_ascii_strcasecmp(scheme, "blob") == 0
-                   || g_ascii_strcasecmp(scheme, "data") == 0 || g_ascii_strcasecmp(scheme, "javascript") == 0;
-    }
+    gboolean system = g_ascii_strcasecmp(scheme, "tel") == 0
+        || g_ascii_strcasecmp(scheme, "mailto") == 0
+        || g_ascii_strcasecmp(scheme, "sms") == 0;
     g_free(scheme);
-    return !internal;
+    return system;
 }
 
 static gboolean on_decide_policy(WebKitWebView *web, WebKitPolicyDecision *decision, WebKitPolicyDecisionType type, gpointer user_data)
@@ -337,7 +312,7 @@ static gboolean on_decide_policy(WebKitWebView *web, WebKitPolicyDecision *decis
     WebKitNavigationAction *action = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(decision));
     WebKitURIRequest *request = webkit_navigation_action_get_request(action);
     const gchar *uri = webkit_uri_request_get_uri(request);
-    if (uri == NULL || !goes_outside(uri)) {
+    if (uri == NULL || !is_system_scheme(uri)) {
         return FALSE;
     }
     gtk_show_uri_on_window(parent_window(web), uri, GDK_CURRENT_TIME, NULL);
