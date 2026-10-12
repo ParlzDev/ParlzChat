@@ -1,0 +1,110 @@
+name: build-clients
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'client-ios/**'
+      - 'client-mac/**'
+      - '.github/workflows/build-clients.yml'
+    tags:
+      - 'v*'
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 准备 PHP
+        run: command -v php >/dev/null 2>&1 || brew install php
+
+      - name: 生成图标与 icns
+        run: |
+          cd client-mac
+          php gen_icons.php
+          chmod +x build.sh build-dmg.sh make-icns.sh
+          ./make-icns.sh
+
+      - name: 构建 .app 与 .dmg
+        run: |
+          cd client-mac
+          ./build.sh
+          ./build-dmg.sh
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Parlz-macOS
+          path: |
+            client-mac/dist/Parlz.app
+            client-mac/dist/Parlz.dmg
+            client-mac/dist/Parlz-mac.zip
+
+  ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: 安装 ldid
+        run: |
+          command -v ldid >/dev/null 2>&1 && exit 0
+          brew install ldid || true
+          command -v ldid >/dev/null 2>&1 && exit 0
+          git clone https://github.com/ProcursusTeam/ldid /tmp/ldid
+          cd /tmp/ldid && make -j"$(sysctl -n hw.ncpu)"
+          sudo cp ldid /usr/local/bin/ldid
+
+      - name: 接入 Xcode 自带的 iOS SDK
+        run: |
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          SDK_VERSION="$(basename "$SDK" .sdk)"
+          mkdir -p "$HOME/theos/sdks"
+          ln -sfn "$SDK" "$HOME/theos/sdks/$SDK_VERSION.sdk"
+          echo "SDK=$SDK -> $HOME/theos/sdks/$SDK_VERSION.sdk"
+
+      - name: 生成图标
+        run: |
+          cd client-ios
+          command -v php >/dev/null 2>&1 || brew install php
+          php gen_icons.php
+          chmod +x build-ipa.sh
+
+      - name: 打包 IPA
+        run: |
+          cd client-ios
+          ./build-ipa.sh
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Parlz-iOS
+          path: client-ios/dist/Parlz.ipa
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - macos
+      - ios
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/Parlz-macOS/Parlz.dmg
+            artifacts/Parlz-macOS/Parlz-mac.zip
+            artifacts/Parlz-iOS/Parlz.ipa

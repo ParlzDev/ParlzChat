@@ -1,0 +1,16 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.webp binary
+*.gif binary
+*.apk binary
+*.ipa binary
+*.exe binary
+*.dll binary
+*.jks binary
+*.keystore binary
+*.sqlite binary
+*.icns binary

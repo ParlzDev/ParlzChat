@@ -1,0 +1,12 @@
+[package]
+name = "parlz-core"
+version = "0.1.0"
+edition = "2021"
+description = "Parlz 聊天客户端核心（DLL/静态库）：HTTP 会话与接口封装"
+
+[lib]
+name = "parlz_core"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+serde_json = "1"

@@ -1,0 +1,14 @@
+[package]
+name = "parlz-gui"
+version = "0.1.0"
+edition = "2021"
+description = "Parlz 图形客户端（Rust 外壳 + WebView2，界面用站点自带的 QQ 风格页面）"
+
+[[bin]]
+name = "parlz-client"
+path = "src/main.rs"
+
+[dependencies]
+raw-window-handle = "0.6"
+wry = "0.47"
+parlz-loader = { path = "../parlz-loader" }

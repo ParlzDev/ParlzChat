@@ -1,0 +1,11 @@
+[package]
+name = "parlz-setup"
+version = "0.1.0"
+edition = "2021"
+description = "Parlz 客户端安装/卸载程序"
+
+[[bin]]
+name = "parlz-setup"
+path = "src/main.rs"
+
+[dependencies]

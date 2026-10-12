@@ -1,0 +1,14 @@
+#import "AppDelegate.h"
+#import "RootViewController.h"
+
+@implementation AppDelegate
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+    self.window.backgroundColor = [UIColor colorWithRed:238.0 / 255.0 green:252.0 / 255.0 blue:244.0 / 255.0 alpha:1.0];
+    self.window.rootViewController = [[RootViewController alloc] init];
+    [self.window makeKeyAndVisible];
+    return YES;
+}
+
+@end

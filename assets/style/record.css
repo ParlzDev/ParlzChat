@@ -1,0 +1,112 @@
+body.record-popup {
+  background: var(--bg, #eefcf4);
+  min-height: 100vh;
+  padding: 0;
+}
+
+.rp-window {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #eefcf4);
+}
+
+.rp-full {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rp-window .record-head {
+  position: static;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  user-select: none;
+}
+
+.rp-window .record-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-window .mw-body {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 16px 28px;
+}
+
+.rp-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-xs, 6px);
+  background: none;
+  color: var(--text, #0b2415);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rp-close svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.rp-close:hover {
+  background: var(--surface-2, #e4fbec);
+}
+
+.rp-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #000000;
+  cursor: zoom-out;
+}
+
+.rp-viewer img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border: 1px solid #333333;
+  border-radius: 6px;
+}
+
+.record-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--line, #cdeedd);
+  position: sticky;
+  top: 0;
+}
+
+.record-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.record-count {
+  color: var(--text-dim, #4a7a60);
+  font-size: 12px;
+}
+
+body.record-popup .mw-body {
+  padding: 16px 18px 28px;
+}

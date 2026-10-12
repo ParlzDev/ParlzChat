@@ -1,0 +1,11 @@
+[workspace]
+members = ["parlz-core", "parlz-loader", "parlz-client", "parlz-gui", "parlz-setup"]
+resolver = "2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+
+[profile.dev]
+opt-level = 0

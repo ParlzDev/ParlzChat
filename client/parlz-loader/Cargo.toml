@@ -1,0 +1,8 @@
+[package]
+name = "parlz-loader"
+version = "0.1.0"
+edition = "2021"
+description = "动态加载 parlz_core.dll 的公共加载器"
+
+[dependencies]
+serde_json = "1"

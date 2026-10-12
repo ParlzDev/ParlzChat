@@ -1,0 +1,13 @@
+[package]
+name = "parlz-client"
+version = "0.1.0"
+edition = "2021"
+description = "Parlz 控制台客户端（parlz-cli，动态加载 parlz_core.dll）"
+
+[[bin]]
+name = "parlz-cli"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+parlz-loader = { path = "../parlz-loader" }

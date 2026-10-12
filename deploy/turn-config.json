@@ -1,0 +1,10 @@
+{
+  "user": "parlz",
+  "pass": "CHANGE_ME_TURN_PASSWORD",
+  "port": 3478,
+  "public_host": "chat.parlz.com",
+  "public_port": 3478,
+  "public_source": "manual",
+  "transport": "tcp",
+  "relay_ips": ["127.0.0.1"]
+}

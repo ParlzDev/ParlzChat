@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Parlz</string>
+    <string name="server_title">服务器地址</string>
+    <string name="server_hint">例如 https://frp-fan.com:60877</string>
+    <string name="server_save">保存并刷新</string>
+    <string name="server_cancel">取消</string>
+    <string name="server_bad">地址无效，需要以 http:// 或 https:// 开头</string>
+    <string name="server_failed">连不上服务器，请检查地址</string>
+    <string name="first_hint">双指长按页面可切换服务器地址</string>
+    <string name="saved_download">已保存到下载目录：%1$s</string>
+    <string name="save_failed">保存失败</string>
+</resources>
