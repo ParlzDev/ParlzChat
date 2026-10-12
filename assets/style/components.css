@@ -1560,6 +1560,20 @@
   z-index: 85;
 }
 
+.cut-frame {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  z-index: 96;
+  background: transparent;
+}
+
+.cut-embedded .cut-page {
+  display: none;
+}
+
 #shot-canvas {
   display: block;
   width: 100%;

@@ -593,579 +593,83 @@ async function takeScreenshot() {
     toast('当前环境不支持截屏，请用 HTTPS 或 localhost 打开本站', true);
     return;
   }
-  let stream = null;
+  let grabbed = null;
   try {
-    stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-  } catch {
+    grabbed = await navigator.mediaDevices.getDisplayMedia({ video: true });
+  } catch (error) {
     return;
   }
+  let imageData = '';
   try {
     const video = document.createElement('video');
-    video.srcObject = stream;
+    video.srcObject = grabbed;
     video.muted = true;
     await video.play();
     await new Promise((resolve) => window.setTimeout(resolve, 240));
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.95));
-    if (blob === null) {
-      toast('截屏失败', true);
-      return;
-    }
-    openShotDialog(URL.createObjectURL(blob));
+    const shot = document.createElement('canvas');
+    shot.width = video.videoWidth;
+    shot.height = video.videoHeight;
+    shot.getContext('2d').drawImage(video, 0, 0);
+    imageData = shot.toDataURL('image/webp', 0.95);
+  } catch (error) {
+    toast('截屏失败', true);
   } finally {
-    stream.getTracks().forEach((track) => track.stop());
+    grabbed.getTracks().forEach((track) => track.stop());
   }
-}
-
-const SHOT_TOOLS = ['rect', 'ellipse', 'arrow', 'pen', 'text', 'mosaic'];
-const SHOT_COLORS = ['#ff3b30', '#00d95f', '#2f7bff', '#ffd400', '#0b2415'];
-
-let shotImage = null;
-let shotUrl = '';
-let shotRect = null;
-let shotDrag = null;
-let shotView = { scale: 1, x: 0, y: 0, w: 0, h: 0 };
-let shotTool = 'rect';
-let shotColor = SHOT_COLORS[0];
-let shotShapes = [];
-let shotDraft = null;
-let shotTextNode = null;
-
-function shotCanvas() {
-  return $('#shot-canvas');
-}
-
-function shotClip() {
-  return shotRect ?? shotFullRect();
-}
-
-function shotImagePoint(event) {
-  const scale = shotView.scale || 1;
-  return {
-    x: (event.clientX - shotView.x) / scale,
-    y: (event.clientY - shotView.y) / scale,
-  };
-}
-
-function shotMapDisplay(point) {
-  const scale = shotView.scale || 1;
-  return { x: shotView.x + point.x * scale, y: shotView.y + point.y * scale };
-}
-
-function shotMapExport(sourceX, sourceY) {
-  return (point) => ({ x: point.x - sourceX, y: point.y - sourceY });
-}
-
-function shotMosaic(ctx, shape, map, scale, ratio) {
-  const a = map(shape.a);
-  const b = map(shape.b);
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  const w = Math.abs(b.x - a.x);
-  const h = Math.abs(b.y - a.y);
-  if (w < 4 || h < 4) {
+  if (imageData === '') {
     return;
   }
-  const block = Math.max(6, Math.round(10 * scale));
-  const tmp = document.createElement('canvas');
-  tmp.width = Math.max(1, Math.round(w / block));
-  tmp.height = Math.max(1, Math.round(h / block));
-  tmp.getContext('2d').drawImage(ctx.canvas, x * ratio, y * ratio, w * ratio, h * ratio, 0, 0, tmp.width, tmp.height);
-  const smooth = ctx.imageSmoothingEnabled;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, x, y, w, h);
-  ctx.imageSmoothingEnabled = smooth;
+  await openCutTool(imageData);
 }
 
-function shotStroke(ctx, shape, map, scale) {
-  ctx.strokeStyle = shape.color;
-  ctx.fillStyle = shape.color;
-  ctx.lineWidth = Math.max(1.5, 3 * scale);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const a = map(shape.a);
-  const b = map(shape.b);
-  if (shape.tool === 'rect') {
-    ctx.strokeRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
-    return;
-  }
-  if (shape.tool === 'ellipse') {
-    ctx.beginPath();
-    ctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    return;
-  }
-  if (shape.tool === 'arrow') {
-    const angle = Math.atan2(b.y - a.y, b.x - a.x);
-    const head = Math.max(9, 15 * scale);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(b.x - head * Math.cos(angle - Math.PI / 7), b.y - head * Math.sin(angle - Math.PI / 7));
-    ctx.lineTo(b.x - head * Math.cos(angle + Math.PI / 7), b.y - head * Math.sin(angle + Math.PI / 7));
-    ctx.closePath();
-    ctx.fill();
-    return;
-  }
-  if (shape.tool === 'pen') {
-    ctx.beginPath();
-    shape.points.forEach((point, index) => {
-      const mapped = map(point);
-      if (index === 0) {
-        ctx.moveTo(mapped.x, mapped.y);
-      } else {
-        ctx.lineTo(mapped.x, mapped.y);
+function openCutTool(imageData) {
+  return new Promise((resolve) => {
+    const frame = document.createElement('iframe');
+    frame.className = 'cut-frame';
+    frame.src = 'cut.php';
+    let sent = false;
+    const done = () => {
+      window.removeEventListener('message', onMessage);
+      frame.remove();
+      resolve();
+    };
+    const handOff = () => {
+      if (sent || frame.contentWindow === null) {
+        return;
       }
-    });
-    ctx.stroke();
-    return;
-  }
-  if (shape.tool === 'text') {
-    ctx.font = 'bold ' + Math.max(11, Math.round(21 * scale)) + 'px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
-    ctx.textBaseline = 'top';
-    ctx.fillText(shape.text, a.x, a.y);
-  }
-}
-
-function shotPaint(ctx, map, scale, ratio, shapes) {
-  shapes.forEach((shape) => {
-    if (shape.tool === 'mosaic') {
-      shotMosaic(ctx, shape, map, scale, ratio);
-      return;
-    }
-    shotStroke(ctx, shape, map, scale);
-  });
-}
-
-function shotLayout() {
-  const canvas = shotCanvas();
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const ratio = window.devicePixelRatio || 1;
-  canvas.width = Math.round(width * ratio);
-  canvas.height = Math.round(height * ratio);
-  canvas.style.width = width + 'px';
-  canvas.style.height = height + 'px';
-  const scale = shotImage === null
-    ? 1
-    : Math.min(width / shotImage.naturalWidth, height / shotImage.naturalHeight);
-  const drawW = shotImage === null ? 0 : Math.round(shotImage.naturalWidth * scale);
-  const drawH = shotImage === null ? 0 : Math.round(shotImage.naturalHeight * scale);
-  shotView = {
-    scale,
-    x: Math.round((width - drawW) / 2),
-    y: Math.round((height - drawH) / 2),
-    w: drawW,
-    h: drawH,
-  };
-}
-
-function shotFullRect() {
-  return { x: shotView.x, y: shotView.y, w: shotView.w, h: shotView.h };
-}
-
-function shotPositionBar(rect) {
-  const bar = $('#shot-bar');
-  if (bar === null) {
-    return;
-  }
-  const barW = bar.offsetWidth || 560;
-  const barH = bar.offsetHeight || 40;
-  let left = rect.x + rect.w - barW;
-  if (left + barW > window.innerWidth - 12) {
-    left = window.innerWidth - barW - 12;
-  }
-  if (left < 12) {
-    left = 12;
-  }
-  let top = rect.y + rect.h + 10;
-  if (top + barH > window.innerHeight - 12) {
-    top = Math.max(12, rect.y - barH - 10);
-  }
-  bar.style.left = Math.round(left) + 'px';
-  bar.style.top = Math.round(top) + 'px';
-}
-
-function drawShot() {
-  const canvas = shotCanvas();
-  const ratio = window.devicePixelRatio || 1;
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, width, height);
-  if (shotImage === null) {
-    return;
-  }
-  const rect = shotClip();
-  if (rect.w < 1 || rect.h < 1) {
-    ctx.drawImage(shotImage, shotView.x, shotView.y, shotView.w, shotView.h);
-    shotPositionBar(shotFullRect());
-    return;
-  }
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(rect.x, rect.y, rect.w, rect.h);
-  ctx.clip();
-  ctx.drawImage(shotImage, shotView.x, shotView.y, shotView.w, shotView.h);
-  shotPaint(ctx, shotMapDisplay, shotView.scale || 1, ratio, shotDraft === null ? shotShapes : shotShapes.concat([shotDraft]));
-  ctx.restore();
-  ctx.strokeStyle = '#00ff6a';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(rect.x + 1, rect.y + 1, Math.max(0, rect.w - 2), Math.max(0, rect.h - 2));
-  shotPositionBar(rect);
-  updateShotSize();
-}
-
-function updateShotSize() {
-  const node = $('#shot-size');
-  if (node === null || shotImage === null) {
-    return;
-  }
-  const rect = shotClip();
-  const scale = shotView.scale || 1;
-  node.textContent = Math.round(rect.w / scale) + ' × ' + Math.round(rect.h / scale);
-}
-
-function shotPoint(event) {
-  return {
-    x: Math.max(shotView.x, Math.min(shotView.x + shotView.w, event.clientX)),
-    y: Math.max(shotView.y, Math.min(shotView.y + shotView.h, event.clientY)),
-  };
-}
-
-function onShotResize() {
-  if (shotImage === null) {
-    return;
-  }
-  shotLayout();
-  shotRect = shotFullRect();
-  drawShot();
-  updateShotSize();
-}
-
-function shotTextCommit() {
-  if (shotTextNode === null) {
-    return;
-  }
-  const active = shotTextNode;
-  shotTextNode = null;
-  const text = active.node.value.trim();
-  active.node.remove();
-  if (text === '') {
-    return;
-  }
-  shotShapes.push({ tool: 'text', color: shotColor, a: active.point, b: active.point, text: text });
-  drawShot();
-}
-
-function shotTextStart(event) {
-  shotTextCommit();
-  const point = shotImagePoint(event);
-  const node = document.createElement('input');
-  node.type = 'text';
-  node.className = 'shot-text';
-  node.maxLength = 80;
-  node.style.left = Math.round(Math.min(event.clientX, window.innerWidth - 170)) + 'px';
-  node.style.top = Math.round(Math.min(event.clientY - 14, window.innerHeight - 48)) + 'px';
-  document.body.appendChild(node);
-  shotTextNode = { node: node, point: point };
-  node.focus();
-  node.addEventListener('keydown', (keyEvent) => {
-    if (keyEvent.key === 'Enter') {
-      keyEvent.preventDefault();
-      keyEvent.stopPropagation();
-      shotTextCommit();
-      return;
-    }
-    if (keyEvent.key === 'Escape') {
-      keyEvent.preventDefault();
-      keyEvent.stopPropagation();
-      const dropped = shotTextNode;
-      shotTextNode = null;
-      if (dropped !== null) {
-        dropped.node.remove();
+      sent = true;
+      try {
+        frame.contentWindow.postMessage({ type: 'parlz-cut-image', dataUrl: imageData }, window.location.origin);
+      } catch (error) {
+        return;
       }
-      drawShot();
-    }
-  });
-  node.addEventListener('blur', shotTextCommit);
-}
-
-function shotExportCanvas() {
-  const rect = shotClip();
-  const scale = shotView.scale || 1;
-  const sourceX = Math.max(0, Math.round((rect.x - shotView.x) / scale));
-  const sourceY = Math.max(0, Math.round((rect.y - shotView.y) / scale));
-  const sourceW = Math.max(1, Math.min(shotImage.naturalWidth - sourceX, Math.round(rect.w / scale)));
-  const sourceH = Math.max(1, Math.min(shotImage.naturalHeight - sourceY, Math.round(rect.h / scale)));
-  const canvas = document.createElement('canvas');
-  canvas.width = sourceW;
-  canvas.height = sourceH;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(shotImage, sourceX, sourceY, sourceW, sourceH, 0, 0, sourceW, sourceH);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, sourceW, sourceH);
-  ctx.clip();
-  shotPaint(ctx, shotMapExport(sourceX, sourceY), 1, 1, shotShapes);
-  ctx.restore();
-  return canvas;
-}
-
-function shotBlob(type, quality) {
-  return new Promise((resolve) => shotExportCanvas().toBlob(resolve, type, quality));
-}
-
-function shotSyncTools() {
-  document.querySelectorAll('[data-shot-tool]').forEach((node) => {
-    node.classList.toggle('is-active', node.dataset.shotTool === shotTool);
-  });
-  document.querySelectorAll('[data-shot-color]').forEach((node) => {
-    node.classList.toggle('is-active', node.dataset.shotColor === shotColor);
-  });
-}
-
-export function openShotDialog(imageUrl) {
-  const image = new Image();
-  image.onload = () => {
-    shotImage = image;
-    shotUrl = imageUrl;
-    shotShapes = [];
-    shotDraft = null;
-    shotTool = 'rect';
-    shotColor = SHOT_COLORS[0];
-    shotLayout();
-    shotRect = shotFullRect();
-    shotSyncTools();
-    drawShot();
-    $('#shot-modal').classList.remove('is-hidden');
-    window.addEventListener('resize', onShotResize);
-  };
-  image.src = imageUrl;
-}
-
-export function closeShotDialog() {
-  shotTextCommit();
-  const modal = $('#shot-modal');
-  if (modal !== null) {
-    modal.classList.add('is-hidden');
-  }
-  if (shotUrl !== '') {
-    URL.revokeObjectURL(shotUrl);
-    shotUrl = '';
-  }
-  window.removeEventListener('resize', onShotResize);
-  shotImage = null;
-  shotRect = null;
-  shotDrag = null;
-  shotDraft = null;
-  shotShapes = [];
-}
-
-async function confirmShot() {
-  if (shotImage === null) {
-    closeShotDialog();
-    return;
-  }
-  const blob = await shotBlob('image/webp', 0.92);
-  closeShotDialog();
-  if (blob === null) {
-    toast('截屏失败', true);
-    return;
-  }
-  await sendImageFile(new File([blob], 'screenshot.webp', { type: 'image/webp' }));
-}
-
-async function saveShot() {
-  if (shotImage === null) {
-    return;
-  }
-  const blob = await shotBlob('image/png');
-  if (blob === null) {
-    toast('截屏失败', true);
-    return;
-  }
-  const name = 'parlz-shot-' + Date.now() + '.png';
-  const url = URL.createObjectURL(blob);
-  closeShotDialog();
-  await downloadFile(url, name);
-  window.setTimeout(() => URL.revokeObjectURL(url), 8000);
-}
-
-async function copyShot() {
-  if (shotImage === null) {
-    return;
-  }
-  if (!navigator.clipboard || typeof window.ClipboardItem !== 'function') {
-    toast('当前环境不支持复制图片，请用「保存」', true);
-    return;
-  }
-  const blob = await shotBlob('image/png');
-  if (blob === null) {
-    return;
-  }
-  try {
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    closeShotDialog();
-    toast('已复制到剪贴板');
-  } catch {
-    toast('复制失败，请用「保存」', true);
-  }
-}
-
-function wireShotDialog() {
-  const canvas = shotCanvas();
-
-  canvas.addEventListener('pointerdown', (event) => {
-    if (shotImage === null) {
-      return;
-    }
-    event.preventDefault();
-    try {
-      canvas.setPointerCapture(event.pointerId);
-    } catch {
-      shotDrag = null;
-    }
-    if (shotTool === 'text') {
-      shotTextStart(event);
-      return;
-    }
-    const point = shotPoint(event);
-    const rect = shotClip();
-    if (shotRect === null || rect.w >= shotView.w - 2) {
-      shotDrag = { mode: 'select', x: point.x, y: point.y };
-      shotRect = { x: point.x, y: point.y, w: 0, h: 0 };
-      drawShot();
-      return;
-    }
-    const imagePoint = shotImagePoint(event);
-    shotDrag = { mode: 'draw', x: point.x, y: point.y };
-    shotDraft = shotTool === 'pen'
-      ? { tool: 'pen', color: shotColor, points: [imagePoint], a: imagePoint, b: imagePoint }
-      : { tool: shotTool, color: shotColor, a: imagePoint, b: imagePoint };
-    drawShot();
-  });
-
-  canvas.addEventListener('pointermove', (event) => {
-    if (shotDrag === null) {
-      return;
-    }
-    if (shotDrag.mode === 'select') {
-      const point = shotPoint(event);
-      shotRect = {
-        x: Math.min(shotDrag.x, point.x),
-        y: Math.min(shotDrag.y, point.y),
-        w: Math.abs(point.x - shotDrag.x),
-        h: Math.abs(point.y - shotDrag.y),
-      };
-      drawShot();
-      return;
-    }
-    if (shotDraft === null) {
-      return;
-    }
-    const imagePoint = shotImagePoint(event);
-    shotDraft.b = imagePoint;
-    if (shotDraft.tool === 'pen') {
-      shotDraft.points.push(imagePoint);
-    }
-    drawShot();
-  });
-
-  canvas.addEventListener('pointerup', () => {
-    if (shotDrag === null) {
-      return;
-    }
-    const mode = shotDrag.mode;
-    shotDrag = null;
-    if (mode === 'select') {
-      if (shotRect === null || shotRect.w < 8 || shotRect.h < 8) {
-        shotRect = shotFullRect();
+    };
+    const onMessage = (event) => {
+      if (event.origin !== window.location.origin) {
+        return;
       }
-      drawShot();
-      return;
-    }
-    if (shotDraft === null) {
-      return;
-    }
-    const draft = shotDraft;
-    shotDraft = null;
-    const scale = shotView.scale || 1;
-    const wide = Math.abs(draft.b.x - draft.a.x) * scale;
-    const tall = Math.abs(draft.b.y - draft.a.y) * scale;
-    if (draft.tool === 'pen' ? draft.points.length > 1 : (wide > 3 || tall > 3)) {
-      shotShapes.push(draft);
-    }
-    drawShot();
-  });
-
-  document.querySelectorAll('[data-shot-tool]').forEach((node) => {
-    node.addEventListener('click', () => {
-      shotTextCommit();
-      shotTool = String(node.dataset.shotTool ?? 'rect');
-      shotSyncTools();
-    });
-  });
-
-  document.querySelectorAll('[data-shot-color]').forEach((node) => {
-    node.addEventListener('click', () => {
-      shotColor = String(node.dataset.shotColor ?? SHOT_COLORS[0]);
-      shotSyncTools();
-    });
-  });
-
-  const undo = $('#shot-undo');
-  if (undo !== null) {
-    undo.addEventListener('click', () => {
-      shotTextCommit();
-      shotShapes.pop();
-      drawShot();
-    });
-  }
-
-  const save = $('#shot-save');
-  if (save !== null) {
-    save.addEventListener('click', () => {
-      saveShot().catch(() => closeShotDialog());
-    });
-  }
-
-  const copy = $('#shot-copy');
-  if (copy !== null) {
-    copy.addEventListener('click', () => {
-      copyShot().catch(() => closeShotDialog());
-    });
-  }
-
-  $('#shot-cancel').addEventListener('click', () => closeShotDialog());
-  $('#shot-confirm').addEventListener('click', () => {
-    confirmShot().catch(() => closeShotDialog());
-  });
-
-  document.addEventListener('keydown', (event) => {
-    const modal = $('#shot-modal');
-    if (modal === null || modal.classList.contains('is-hidden')) {
-      return;
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeShotDialog();
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      confirmShot().catch(() => closeShotDialog());
-    } else if (event.key === 'z' && (event.ctrlKey || event.metaKey)) {
-      event.preventDefault();
-      shotShapes.pop();
-      drawShot();
-    }
+      const data = event.data;
+      if (data === null || typeof data !== 'object') {
+        return;
+      }
+      if (data.type === 'parlz-cut-ready') {
+        handOff();
+        return;
+      }
+      if (data.type === 'parlz-cut-send' && typeof data.dataUrl === 'string') {
+        fetch(data.dataUrl)
+          .then((response) => response.blob())
+          .then((body) => sendImageFile(new File([body], 'screenshot.webp', { type: 'image/webp' })))
+          .catch(() => {});
+        return;
+      }
+      if (data.type === 'parlz-cut-close') {
+        done();
+      }
+    };
+    window.addEventListener('message', onMessage);
+    frame.addEventListener('load', handOff);
+    document.body.appendChild(frame);
   });
 }
 
@@ -1297,7 +801,6 @@ export function init() {
     shotBtn.classList.add('is-hidden');
   }
   shotBtn.addEventListener('click', () => takeScreenshot());
-  wireShotDialog();
 
   $('#voice-btn').addEventListener('click', () => {
     setVoiceMode(!voiceMode);
