@@ -60,6 +60,7 @@ if ($action === 'logout') {
         db()->prepare('DELETE FROM devices WHERE token = ?')->execute([$token]);
     }
     $_SESSION = [];
+    parlz_clear_device_cookie();
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
         setcookie(session_name(), '', [
