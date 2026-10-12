@@ -34,3 +34,7 @@ client/target/
 !assets/uploads/parlz-android-1.0.apk
 /*.zip
 client-dotnet.zip
+data/*.log
+data/*.lock
+data/schema.stamp
+data/*.sqlite
