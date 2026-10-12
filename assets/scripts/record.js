@@ -29,7 +29,7 @@ function recordDocument(data) {
   const payload = JSON.stringify(data).replace(/</g, '\\u003c');
   const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   return '<!doctype html><html lang="zh-CN" data-theme="' + theme + '"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">' +
     '<title>' + esc(data.title) + '</title>' +
     '<link rel="stylesheet" href="' + origin() + '/assets/style/base.css">' +
     '<link rel="stylesheet" href="' + origin() + '/assets/style/components.css">' +

@@ -43,8 +43,20 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     self.web.backgroundColor = [UIColor colorWithRed:238.0 / 255.0 green:252.0 / 255.0 blue:244.0 / 255.0 alpha:1.0];
     [self.view addSubview:self.web];
 
+    [self lockZoom];
     [self preparePermissions];
     [self loadServer];
+}
+
+- (void)lockZoom {
+    self.web.scrollView.pinchGestureRecognizer.enabled = NO;
+    self.web.scrollView.maximumZoomScale = 1.0;
+    self.web.scrollView.minimumZoomScale = 1.0;
+    self.web.scrollView.zoomScale = 1.0;
+}
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    [self lockZoom];
 }
 
 - (UIStatusBarStyle)preferredStatusBarStyle {

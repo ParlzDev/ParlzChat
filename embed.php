@@ -38,7 +38,7 @@ $chatUrl = $uidParam === '' ? '' : 'index.php?chat&uid=' . $uidParam;
 <html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Parlz · 扫一扫</title>
 <script src="<?= asset('assets/scripts/theme-boot.js') ?>"></script>
 <link rel="stylesheet" href="<?= asset('assets/style/base.css') ?>">

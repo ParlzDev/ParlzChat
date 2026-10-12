@@ -38,7 +38,7 @@ header('Cache-Control: no-store');
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>安装 Parlz for iPhone</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}

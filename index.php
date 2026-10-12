@@ -57,7 +57,7 @@ $boot = [
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Parlz · 聊天</title>
 <link rel="icon" type="image/svg+xml" href="<?= asset('assets/img/favicon.svg') ?>">
 <script src="<?= asset('assets/scripts/theme-boot.js') ?>"></script>
