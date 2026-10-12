@@ -237,57 +237,137 @@ function memberItems(node) {
   return items;
 }
 
+let menuStamp = 0;
+let swallowClick = false;
+
+function itemsFor(target) {
+  const selection = window.getSelection();
+  if (selection !== null && String(selection).length > 0) {
+    return null;
+  }
+
+  let items = null;
+  const msgNode = target.closest('[data-msg]');
+  if (msgNode !== null) {
+    const message = messages.messageById(Number(msgNode.dataset.msg));
+    if (message !== null) {
+      items = messageItems(message);
+    }
+  }
+
+  const convNode = target.closest('[data-chat]');
+  if (items === null && convNode !== null) {
+    const chat = chatById(Number(convNode.dataset.chat));
+    if (chat !== null) {
+      items = chatItems(chat);
+    }
+  }
+
+  const memberNode = target.closest('[data-member]');
+  if (items === null && memberNode !== null) {
+    const built = memberItems(memberNode);
+    if (built.length > 0) {
+      items = built;
+    }
+  }
+
+  const avatarNode = target.closest('[data-user]');
+  if (items === null && avatarNode !== null) {
+    const id = Number(avatarNode.dataset.user);
+    const avatarImg = avatarNode.querySelector('img');
+    if (id > 0) {
+      items = [];
+      if (avatarImg !== null) {
+        items.push({ label: '复制图片', run: () => copyImage(avatarImg.getAttribute('src') ?? '') });
+      }
+      items.push({ label: '复制 ' + uidForUser(id), run: () => copyText(uidForUser(id)) });
+    }
+  }
+
+  return items === null || items.length === 0 ? null : items;
+}
+
+function showMenu(target, x, y) {
+  const items = itemsFor(target);
+  if (items === null) {
+    return false;
+  }
+  menuStamp = Date.now();
+  openMenu(items, x, y);
+  return true;
+}
+
 export function init() {
   document.addEventListener('contextmenu', (event) => {
-    const selection = window.getSelection();
-    if (selection !== null && String(selection).length > 0) {
+    if (Date.now() - menuStamp < 700) {
+      event.preventDefault();
       return;
     }
-
-    let items = null;
-    const msgNode = event.target.closest('[data-msg]');
-    if (msgNode !== null) {
-      const message = messages.messageById(Number(msgNode.dataset.msg));
-      if (message !== null) {
-        items = messageItems(message);
-      }
+    if (showMenu(event.target, event.clientX, event.clientY)) {
+      event.preventDefault();
     }
-
-    const convNode = event.target.closest('[data-chat]');
-    if (items === null && convNode !== null) {
-      const chat = chatById(Number(convNode.dataset.chat));
-      if (chat !== null) {
-        items = chatItems(chat);
-      }
-    }
-
-    const memberNode = event.target.closest('[data-member]');
-    if (items === null && memberNode !== null) {
-      const built = memberItems(memberNode);
-      if (built.length > 0) {
-        items = built;
-      }
-    }
-
-    const avatarNode = event.target.closest('[data-user]');
-    if (items === null && avatarNode !== null) {
-      const id = Number(avatarNode.dataset.user);
-      const avatarImg = avatarNode.querySelector('img');
-      if (id > 0) {
-        items = [];
-        if (avatarImg !== null) {
-          items.push({ label: '复制图片', run: () => copyImage(avatarImg.getAttribute('src') ?? '') });
-        }
-        items.push({ label: '复制 ' + uidForUser(id), run: () => copyText(uidForUser(id)) });
-      }
-    }
-
-    if (items === null || items.length === 0) {
-      return;
-    }
-    event.preventDefault();
-    openMenu(items, event.clientX, event.clientY);
   });
+
+  let pressTimer = null;
+  let pressX = 0;
+  let pressY = 0;
+  let pressTarget = null;
+
+  const cancelPress = () => {
+    if (pressTimer !== null) {
+      window.clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+    pressTarget = null;
+  };
+
+  document.addEventListener('touchstart', (event) => {
+    cancelPress();
+    if (event.touches.length !== 1) {
+      return;
+    }
+    const touch = event.touches[0];
+    pressX = touch.clientX;
+    pressY = touch.clientY;
+    pressTarget = event.target;
+    pressTimer = window.setTimeout(() => {
+      pressTimer = null;
+      const target = pressTarget;
+      pressTarget = null;
+      if (target === null || !showMenu(target, pressX, pressY)) {
+        return;
+      }
+      swallowClick = true;
+      window.setTimeout(() => { swallowClick = false; }, 800);
+      if (typeof navigator.vibrate === 'function') {
+        navigator.vibrate(12);
+      }
+    }, 450);
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (event) => {
+    if (pressTimer === null) {
+      return;
+    }
+    const touch = event.touches[0];
+    if (touch === undefined) {
+      return;
+    }
+    if (Math.abs(touch.clientX - pressX) > 10 || Math.abs(touch.clientY - pressY) > 10) {
+      cancelPress();
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', cancelPress, { passive: true });
+  document.addEventListener('touchcancel', cancelPress, { passive: true });
+
+  document.addEventListener('click', (event) => {
+    if (swallowClick) {
+      swallowClick = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
 
   document.addEventListener('click', closeMenu);
   document.addEventListener('keydown', (event) => {
