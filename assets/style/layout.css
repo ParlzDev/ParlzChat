@@ -530,6 +530,11 @@
     font-size: 16px;
   }
 
+  html,
+  body {
+    touch-action: manipulation;
+  }
+
   .composer-send {
     width: 42px;
     height: 38px;
