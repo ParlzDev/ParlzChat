@@ -4,6 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__has_include)
+#if __has_include(<webkit2/WebKitNetworkSession.h>)
+#include <webkit2/WebKitNetworkSession.h>
+#define PARLZ_WEBKIT_SESSION 1
+#endif
+#endif
+
 #define PARLZ_DEFAULT_SERVER "https://chat.parlz.com"
 
 static const gchar *BRIDGE_SCRIPT =
@@ -432,10 +439,10 @@ static void wire_downloads(WebKitWebView *web)
         return;
     }
     g_downloads_wired = TRUE;
-#if WEBKIT_CHECK_VERSION(2, 40, 0)
-    WebKitNetworkSession *session = webkit_web_view_get_network_session(web);
-    g_signal_connect(session, "download-started", G_CALLBACK(on_download_started), NULL);
+#ifdef PARLZ_WEBKIT_SESSION
+    g_signal_connect(webkit_web_view_get_network_session(web), "download-started", G_CALLBACK(on_download_started), NULL);
 #else
+    (void)web;
     g_signal_connect(webkit_web_context_get_default(), "download-started", G_CALLBACK(on_download_started), NULL);
 #endif
 }
