@@ -523,6 +523,13 @@
     border-radius: 10px;
   }
 
+  .input,
+  .composer-input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   .composer-send {
     width: 42px;
     height: 38px;
