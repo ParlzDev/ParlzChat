@@ -214,7 +214,7 @@ $boot = [
           <button class="icon-btn" id="image-btn" type="button" title="发送图片或文件">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.2 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="icon-btn" id="shot-btn" type="button" title="截屏发送">
+          <button class="icon-btn" id="shot-btn" type="button" title="截屏发送（Ctrl+Alt+A）">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1.2 2H20v15H4V5h3.8zM12 8.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 2a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z"/></svg>
           </button>
           <button class="icon-btn" id="voice-btn" type="button" title="语音消息">

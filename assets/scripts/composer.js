@@ -5,6 +5,7 @@ import { uploadFile } from './upload.js';
 import { stickerNames, stickerSvg, stickerToken } from './stickers.js';
 import { quotePreview } from './richtext.js';
 import { icon } from './icons.js';
+import * as cut from './cut.js';
 
 let mentionList = [];
 let mentionIndex = 0;
@@ -589,88 +590,7 @@ async function sendImageFile(file) {
 }
 
 async function takeScreenshot() {
-  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-    toast('当前环境不支持截屏，请用 HTTPS 或 localhost 打开本站', true);
-    return;
-  }
-  let grabbed = null;
-  try {
-    grabbed = await navigator.mediaDevices.getDisplayMedia({ video: true });
-  } catch (error) {
-    return;
-  }
-  let imageData = '';
-  try {
-    const video = document.createElement('video');
-    video.srcObject = grabbed;
-    video.muted = true;
-    await video.play();
-    await new Promise((resolve) => window.setTimeout(resolve, 240));
-    const shot = document.createElement('canvas');
-    shot.width = video.videoWidth;
-    shot.height = video.videoHeight;
-    shot.getContext('2d').drawImage(video, 0, 0);
-    imageData = shot.toDataURL('image/webp', 0.95);
-  } catch (error) {
-    toast('截屏失败', true);
-  } finally {
-    grabbed.getTracks().forEach((track) => track.stop());
-  }
-  if (imageData === '') {
-    return;
-  }
-  await openCutTool(imageData);
-}
-
-function openCutTool(imageData) {
-  return new Promise((resolve) => {
-    const frame = document.createElement('iframe');
-    frame.className = 'cut-frame';
-    frame.src = 'cut.php';
-    let sent = false;
-    const done = () => {
-      window.removeEventListener('message', onMessage);
-      frame.remove();
-      resolve();
-    };
-    const handOff = () => {
-      if (sent || frame.contentWindow === null) {
-        return;
-      }
-      sent = true;
-      try {
-        frame.contentWindow.postMessage({ type: 'parlz-cut-image', dataUrl: imageData }, window.location.origin);
-      } catch (error) {
-        return;
-      }
-    };
-    const onMessage = (event) => {
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-      const data = event.data;
-      if (data === null || typeof data !== 'object') {
-        return;
-      }
-      if (data.type === 'parlz-cut-ready') {
-        handOff();
-        return;
-      }
-      if (data.type === 'parlz-cut-send' && typeof data.dataUrl === 'string') {
-        fetch(data.dataUrl)
-          .then((response) => response.blob())
-          .then((body) => sendImageFile(new File([body], 'screenshot.webp', { type: 'image/webp' })))
-          .catch(() => {});
-        return;
-      }
-      if (data.type === 'parlz-cut-close') {
-        done();
-      }
-    };
-    window.addEventListener('message', onMessage);
-    frame.addEventListener('load', handOff);
-    document.body.appendChild(frame);
-  });
+  await cut.start({ onSend: sendImageFile, canSend: true });
 }
 
 export function init() {
@@ -801,6 +721,21 @@ export function init() {
     shotBtn.classList.add('is-hidden');
   }
   shotBtn.addEventListener('click', () => takeScreenshot());
+
+  document.addEventListener('keydown', (event) => {
+    const key = event.key === 'a' || event.key === 'A' || event.code === 'KeyA';
+    const windowsLike = event.ctrlKey && event.altKey && !event.shiftKey && !event.metaKey;
+    const macLike = event.metaKey && event.shiftKey && !event.altKey && !event.ctrlKey;
+    if (!key || (!windowsLike && !macLike)) {
+      return;
+    }
+    event.preventDefault();
+    if (state.activeChat === null) {
+      toast('先打开一个会话，截的图会发到那个会话', true);
+      return;
+    }
+    takeScreenshot();
+  });
 
   $('#voice-btn').addEventListener('click', () => {
     setVoiceMode(!voiceMode);

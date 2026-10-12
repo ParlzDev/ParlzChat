@@ -374,28 +374,6 @@ async function confirmSend() {
   await handler(new File([data], 'screenshot.webp', { type: 'image/webp' }));
 }
 
-async function sendOut() {
-  const data = await blob('image/webp', 0.92);
-  if (data === null) {
-    toast('截屏失败', true);
-    return;
-  }
-  if (window.parent !== window) {
-    const reader = new FileReader();
-    const dataUrl = await new Promise((resolve) => {
-      reader.onload = () => resolve(String(reader.result ?? ''));
-      reader.onerror = () => resolve('');
-      reader.readAsDataURL(data);
-    });
-    close();
-    if (dataUrl !== '') {
-      notifyParent('parlz-cut-send', { dataUrl });
-    }
-    return;
-  }
-  confirmSend().catch(() => close());
-}
-
 function wire() {
   canvas.addEventListener('pointerdown', (event) => {
     if (image === null) {
@@ -509,10 +487,6 @@ function wire() {
   const confirm = $('#shot-confirm');
   if (confirm !== null) {
     confirm.addEventListener('click', () => {
-      if (window.parent !== window) {
-        sendOut().catch(() => close());
-        return;
-      }
       confirmSend().catch(() => close());
     });
   }
@@ -543,17 +517,6 @@ function wire() {
   });
 }
 
-function notifyParent(type, payload) {
-  if (window.parent === window) {
-    return;
-  }
-  try {
-    window.parent.postMessage(Object.assign({ type }, payload ?? {}), window.location.origin);
-  } catch (error) {
-    return;
-  }
-}
-
 export function close() {
   textCommit();
   if (layer !== null) {
@@ -573,7 +536,6 @@ export function close() {
     stream = null;
   }
   onSend = null;
-  notifyParent('parlz-cut-close');
 }
 
 export function show(imageUrl, options) {
@@ -634,25 +596,7 @@ export async function start(options) {
 }
 
 export function boot() {
-  const embedded = window.parent !== window;
-  buildLayer(embedded);
-  if (embedded) {
-    document.documentElement.classList.add('cut-embedded');
-    window.addEventListener('message', (event) => {
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-      const data = event.data;
-      if (data === null || typeof data !== 'object') {
-        return;
-      }
-      if (data.type === 'parlz-cut-image' && typeof data.dataUrl === 'string' && data.dataUrl !== '') {
-        show(data.dataUrl, { canSend: true });
-      }
-    });
-    notifyParent('parlz-cut-ready');
-    return;
-  }
+  buildLayer(false);
   const startNode = $('#cut-start');
   if (startNode !== null) {
     startNode.classList.remove('is-hidden');
