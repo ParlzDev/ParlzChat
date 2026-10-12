@@ -45,7 +45,21 @@ function frameSrc(url, internal) {
   if (internal && INLINE.has(ext)) {
     return sourceUrl(url);
   }
-  return absolute(url);
+  if (internal) {
+    return absolute(url);
+  }
+  return 'proxy.php?url=' + encodeURIComponent(absolute(url));
+}
+
+function fullPageHref(url, internal) {
+  if (internal) {
+    return absolute(url);
+  }
+  return 'proxy.php?url=' + encodeURIComponent(absolute(url));
+}
+
+function headExtra(url, internal) {
+  return '<a class="embed-open" href="' + esc(fullPageHref(url, internal)) + '" title="整页打开">' + icon('expand') + '</a>';
 }
 
 function shell(title, extra, bodyHtml) {
@@ -66,7 +80,7 @@ function shell(title, extra, bodyHtml) {
 
 function openFrame(url, title) {
   const internal = url.origin === window.location.origin;
-  shell(hostTitle(url, title), '', '<iframe class="embed-frame" src="' + esc(frameSrc(url, internal)) + '"></iframe>');
+  shell(hostTitle(url, title), headExtra(url, internal), '<iframe class="embed-frame" src="' + esc(frameSrc(url, internal)) + '"></iframe>');
 }
 
 function showRisk(url, title) {

@@ -85,6 +85,7 @@ function current_user(): ?array
         return null;
     }
     $row['uid'] = user_uid((int)$row['id']);
+    session_write_close();
     return $row;
 }
 

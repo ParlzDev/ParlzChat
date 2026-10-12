@@ -279,12 +279,50 @@ $boot = [
 
 <div class="shot-layer is-hidden" id="shot-modal">
   <canvas id="shot-canvas"></canvas>
-  <div class="shot-bar">
+  <div class="shot-bar" id="shot-bar">
     <span class="shot-size mono" id="shot-size"></span>
-    <button class="btn btn-sm btn-icon" id="shot-cancel" type="button" title="取消截图" aria-label="取消截图">
+    <span class="shot-sep"></span>
+    <button class="icon-btn shot-tool is-active" type="button" data-shot-tool="rect" title="矩形">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+    <button class="icon-btn shot-tool" type="button" data-shot-tool="ellipse" title="椭圆">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+    <button class="icon-btn shot-tool" type="button" data-shot-tool="arrow" title="箭头">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L17.5 6.5M17.5 6.5h-5.6M17.5 6.5v5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button class="icon-btn shot-tool" type="button" data-shot-tool="pen" title="画笔">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17.2V20h2.8l9.9-9.9-2.8-2.8zM18.7 7.3a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0l-1.3 1.3 2.8 2.8z"/></svg>
+    </button>
+    <button class="icon-btn shot-tool" type="button" data-shot-tool="text" title="文字">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v2.6h-5.7V19h-2.6V7.6H5z"/></svg>
+    </button>
+    <button class="icon-btn shot-tool" type="button" data-shot-tool="mosaic" title="马赛克">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h5v5H4zm6 0h5v5h-5zm6 0h4v5h-4zM4 10h5v5H4zm6 0h5v5h-5zm6 0h4v5h-4zM4 16h5v4H4zm6 0h5v4h-5zm6 0h4v4h-4z"/></svg>
+    </button>
+    <span class="shot-sep"></span>
+    <span class="shot-colors" id="shot-colors">
+      <button class="shot-color is-active" type="button" data-shot-color="#ff3b30" style="background:#ff3b30" title="红"></button>
+      <button class="shot-color" type="button" data-shot-color="#00d95f" style="background:#00d95f" title="绿"></button>
+      <button class="shot-color" type="button" data-shot-color="#2f7bff" style="background:#2f7bff" title="蓝"></button>
+      <button class="shot-color" type="button" data-shot-color="#ffd400" style="background:#ffd400" title="黄"></button>
+      <button class="shot-color" type="button" data-shot-color="#0b2415" style="background:#0b2415" title="黑"></button>
+    </span>
+    <span class="shot-sep"></span>
+    <button class="icon-btn" type="button" id="shot-undo" title="撤销一步">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5V2L5 7l6 5V9a5 5 0 1 1-5 5H4a7 7 0 1 0 7-9z"/></svg>
+    </button>
+    <button class="icon-btn" type="button" id="shot-save" title="保存到本地">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v9.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4L11 12.2z"/><path d="M5 18h14v2.4H5z"/></svg>
+    </button>
+    <button class="icon-btn" type="button" id="shot-copy" title="复制到剪贴板">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="13" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 3h9a3 3 0 0 1 3 3v9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+    <span class="shot-sep"></span>
+    <button class="icon-btn" type="button" id="shot-cancel" title="取消截图">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5l12.6 12.6-1.4 1.4L5 6.4zM17.6 5l1.4 1.4L6.4 19 5 17.6z"/></svg>
     </button>
-    <button class="btn btn-sm btn-icon btn-primary" id="shot-confirm" type="button" title="截取并发送" aria-label="截取并发送">
+    <button class="icon-btn btn-primary" type="button" id="shot-confirm" title="发送到聊天">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M21.6 3.1L2.5 10.6c-.9.4-.9 1.6 0 1.9l4.7 1.7 1.7 4.8c.3.9 1.5 1 1.9.2l1.8-3.6 4.6 3.5c.7.5 1.7.1 1.9-.8l3-13.4c.2-.9-.6-1.6-1.5-1.3zM9 13.3l9.3-7.4-6.7 7.9-.4 3.4z"/></svg>
     </button>
   </div>

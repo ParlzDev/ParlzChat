@@ -48,13 +48,19 @@ function device_label(string $ua): string
 
     $device = '';
     $system = '';
-    if (preg_match('/iPhone OS (\d+)[._](\d+)/', $ua, $m)) {
+    if (preg_match('/iPhone OS (\d+)[._](\d+)(?:[._](\d+))?/', $ua, $m) === 1) {
         $device = 'iPhone';
-        $system = 'iOS ' . $m[1] . '.' . $m[2];
-    } elseif (preg_match('/iPad[^)]*OS (\d+)[._](\d+)/', $ua, $m)) {
+        $system = 'iOS ' . $m[1] . '.' . $m[2] . (isset($m[3]) && $m[3] !== '' ? '.' . $m[3] : '');
+    } elseif (preg_match('/iPad[^)]*OS (\d+)[._](\d+)(?:[._](\d+))?/', $ua, $m) === 1) {
         $device = 'iPad';
-        $system = 'iPadOS ' . $m[1] . '.' . $m[2];
-    } elseif (preg_match('/Android ([\d.]+)(?:;\s*([^;)]+?)\s*(?:Build|\)))?/', $ua, $m)) {
+        $system = 'iPadOS ' . $m[1] . '.' . $m[2] . (isset($m[3]) && $m[3] !== '' ? '.' . $m[3] : '');
+    } elseif (stripos($ua, 'iPhone') !== false) {
+        $device = 'iPhone';
+        $system = 'iOS';
+    } elseif (stripos($ua, 'iPad') !== false) {
+        $device = 'iPad';
+        $system = 'iPadOS';
+    } elseif (preg_match('/Android ([\d.]+)(?:;\s*([^;)]+?)\s*(?:Build|\)))?/', $ua, $m) === 1) {
         $model = isset($m[2]) ? trim($m[2]) : '';
         if ($model === '' || mb_strlen($model) < 2 || in_array(strtolower($model), ['wv', 'mobile', 'en', 'zh'], true)) {
             $model = 'Android';
@@ -109,18 +115,22 @@ function device_register(int $userId): string
 {
     $token = bin2hex(random_bytes(16));
     $ua = mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 400);
-    db()->prepare('INSERT INTO devices (user_id, token, label, ip, ua, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        ->execute([
-            $userId,
-            $token,
-            device_label($ua),
-            mb_substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
-            $ua,
-            time(),
-            time(),
-        ]);
-    db()->prepare('DELETE FROM devices WHERE user_id = ? AND id NOT IN (SELECT id FROM devices WHERE user_id = ? ORDER BY last_seen DESC LIMIT 20)')
-        ->execute([$userId, $userId]);
+    db_write(static function () use ($userId, $token, $ua): void {
+        db()->prepare('INSERT INTO devices (user_id, token, label, ip, ua, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([
+                $userId,
+                $token,
+                device_label($ua),
+                mb_substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
+                $ua,
+                time(),
+                time(),
+            ]);
+    });
+    db_write(static function () use ($userId): void {
+        db()->prepare('DELETE FROM devices WHERE user_id = ? AND id NOT IN (SELECT id FROM devices WHERE user_id = ? ORDER BY last_seen DESC LIMIT 20)')
+            ->execute([$userId, $userId]);
+    });
     return $token;
 }
 
@@ -168,12 +178,22 @@ function presence_touch(int $userId, int $chatId, bool $typing): void
 {
     $now = time();
     $until = $typing ? $now + PARLZ_TYPING_WINDOW : 0;
-    db()->prepare('INSERT INTO presence (user_id, chat_id, typing_until, last_seen) VALUES (?, ?, ?, ?)
+    if (!$typing) {
+        $stmt = db()->prepare('SELECT chat_id, last_seen FROM presence WHERE user_id = ?');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch();
+        if ($row !== false && (int)$row['chat_id'] === $chatId && $now - (int)$row['last_seen'] < 15) {
+            return;
+        }
+    }
+    db_write(static function () use ($userId, $chatId, $until, $now): void {
+        db()->prepare('INSERT INTO presence (user_id, chat_id, typing_until, last_seen) VALUES (?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             chat_id = excluded.chat_id,
             last_seen = excluded.last_seen,
             typing_until = CASE WHEN excluded.typing_until > presence.typing_until THEN excluded.typing_until ELSE presence.typing_until END')
-        ->execute([$userId, $chatId, $until, $now]);
+            ->execute([$userId, $chatId, $until, $now]);
+    });
 }
 
 function typing_user_ids(int $chatId, int $userId): array

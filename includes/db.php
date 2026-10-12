@@ -31,10 +31,48 @@ function db(): PDO
     ]);
     $pdo->exec('PRAGMA journal_mode = WAL');
     $pdo->exec('PRAGMA foreign_keys = ON');
-    $pdo->exec('PRAGMA busy_timeout = 5000');
-    migrate($pdo);
+    $pdo->exec('PRAGMA busy_timeout = 15000');
+    $pdo->exec('PRAGMA synchronous = NORMAL');
+
+    $stamp = (string)@md5_file(__DIR__ . '/db.php');
+    $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts')")->fetchColumn();
+    if ($tables < 2 || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
+        migrate($pdo);
+        @file_put_contents(PARLZ_DATA . '/schema.stamp', $stamp);
+    }
 
     return $pdo;
+}
+
+function db_write(callable $run): void
+{
+    static $lock = null;
+    static $lockReady = false;
+    if (!$lockReady) {
+        $lockReady = true;
+        $handle = @fopen(PARLZ_DATA . '/write.lock', 'c');
+        $lock = $handle === false ? null : $handle;
+    }
+    if ($lock !== null) {
+        @flock($lock, LOCK_EX);
+    }
+    try {
+        for ($attempt = 0; ; $attempt++) {
+            try {
+                $run();
+                return;
+            } catch (PDOException $error) {
+                if ($attempt >= 9 || stripos((string)$error->getMessage(), 'database is locked') === false) {
+                    throw $error;
+                }
+                usleep(150000 + $attempt * 150000 + random_int(0, 80000));
+            }
+        }
+    } finally {
+        if ($lock !== null) {
+            @flock($lock, LOCK_UN);
+        }
+    }
 }
 
 function migrate(PDO $pdo): void
@@ -180,6 +218,24 @@ function migrate(PDO $pdo): void
 
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages (chat_id, id)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_friends_user ON friends (user_id, status)');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS rate_limits (
+        key TEXT PRIMARY KEY,
+        window_start INTEGER NOT NULL,
+        hits INTEGER NOT NULL DEFAULT 0
+    )');
+
+    try {
+        $pdo->exec("CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(body, content='messages', content_rowid='id')");
+        $pdo->exec('CREATE TRIGGER IF NOT EXISTS messages_fts_ai AFTER INSERT ON messages BEGIN INSERT INTO messages_fts(rowid, body) VALUES (new.id, new.body); END');
+        $pdo->exec('CREATE TRIGGER IF NOT EXISTS messages_fts_ad AFTER DELETE ON messages BEGIN INSERT INTO messages_fts(messages_fts, rowid, body) VALUES (\'delete\', old.id, old.body); END');
+        $pdo->exec('CREATE TRIGGER IF NOT EXISTS messages_fts_au AFTER UPDATE ON messages BEGIN INSERT INTO messages_fts(messages_fts, rowid, body) VALUES (\'delete\', old.id, old.body); INSERT INTO messages_fts(rowid, body) VALUES (new.id, new.body); END');
+        if ((int)$pdo->query('SELECT COUNT(*) FROM messages_fts')->fetchColumn() === 0) {
+            $pdo->exec('INSERT INTO messages_fts(rowid, body) SELECT id, body FROM messages');
+        }
+    } catch (Throwable $ftsError) {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS messages_search_off (id INTEGER PRIMARY KEY)');
+    }
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS presence (
         user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

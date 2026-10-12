@@ -7,6 +7,7 @@ require __DIR__ . '/../includes/image.php';
 
 $user = require_user();
 require_post();
+rate_guard('upload', (string)$user['id'], 20, 60);
 
 function clean_file_name(string $name): string
 {

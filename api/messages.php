@@ -24,6 +24,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 require_post();
 $data = request_data();
 $action = (string)($data['action'] ?? 'send');
+rate_guard('msg', (string)$uid, 40, 10);
 
 if ($action === 'poke') {
     $chatId = int_field($data, 'chat_id', '会话');

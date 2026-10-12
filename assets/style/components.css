@@ -1533,21 +1533,75 @@
 
 .shot-bar {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  left: 24px;
+  top: 24px;
   z-index: 86;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px 8px 14px;
+  justify-content: center;
+  gap: 4px;
+  max-width: calc(100vw - 24px);
+  padding: 6px 10px;
   background: var(--surface);
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border-radius: 18px;
+}
+
+.shot-sep {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 6px;
+  background: var(--line);
 }
 
 .shot-size {
+  min-width: 72px;
+  padding: 0 4px;
   color: var(--green-ink);
   font-size: 12px;
+  text-align: center;
+}
+
+.shot-tool.is-active {
+  background: var(--green);
+  color: var(--on-green);
+}
+
+.shot-colors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+}
+
+.shot-color {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.shot-color.is-active {
+  border-color: var(--text);
+}
+
+.shot-text {
+  position: fixed;
+  z-index: 90;
+  min-width: 140px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  outline: none;
 }
 
 .ctx-menu {

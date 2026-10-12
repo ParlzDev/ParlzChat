@@ -77,6 +77,7 @@ if ($action === 'logout') {
 }
 
 if ($action === 'register') {
+    rate_guard('register', rate_scope(), 5, 3600);
     $username = field($data, 'username', 20, '用户名');
     if (preg_match('/^[A-Za-z0-9_]{3,20}$/', $username) !== 1) {
         fail('用户名需为 3-20 位字母、数字或下划线');
@@ -118,6 +119,8 @@ if ($action === 'login') {
     if ($username === '' || $password === '') {
         fail('请输入用户名和密码');
     }
+    $loginScope = strtolower($username) . '|' . rate_scope();
+    rate_guard('login', $loginScope, 8, 300);
 
     $stmt = db()->prepare('SELECT id, pass_hash FROM users WHERE username = ?');
     $stmt->execute([$username]);
@@ -126,6 +129,7 @@ if ($action === 'login') {
         fail('用户名或密码不正确', 401);
     }
 
+    rate_clear('login', $loginScope);
     session_regenerate_id(true);
     $_SESSION['uid'] = (int)$row['id'];
     $_SESSION['device'] = device_register((int)$row['id']);
