@@ -120,8 +120,16 @@ export function init() {
       return;
     }
     if (data.type === 'parlz-embed-open' && typeof data.url === 'string' && data.url !== '') {
-      close();
-      window.location.href = data.url;
+      let target = null;
+      try {
+        target = new URL(data.url, window.location.origin);
+      } catch (error) {
+        target = null;
+      }
+      if (target !== null && target.origin === window.location.origin) {
+        close();
+        window.location.href = target.href;
+      }
     }
   });
 
