@@ -3,7 +3,11 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 VER=${VERSION:-1.0.0}
-ARCH=${ARCH:-x86_64}
+ARCH=${ARCH:-$(uname -m)}
+case "$ARCH" in
+    aarch64|arm64) TOOL_ARCH=aarch64 ;;
+    *) TOOL_ARCH=x86_64 ;;
+esac
 APPDIR=$PWD/build/Parlz.AppDir
 TOOLS=$PWD/build/tools
 
@@ -29,12 +33,13 @@ exec "$HERE/usr/bin/parlz" "$@"
 RUN
 chmod +x "$APPDIR/AppRun"
 
-if [ ! -x "$TOOLS/appimagetool" ]; then
-    curl -fsSL -o "$TOOLS/appimagetool" \
-        "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
-    chmod +x "$TOOLS/appimagetool"
+TOOL=${APPIMAGETOOL:-$TOOLS/appimagetool-$TOOL_ARCH}
+if [ ! -x "$TOOL" ]; then
+    curl -fsSL -o "$TOOL" \
+        "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${TOOL_ARCH}.AppImage"
+    chmod +x "$TOOL"
 fi
 
 export ARCH
-"$TOOLS/appimagetool" --appimage-extract-and-run --no-appstream "$APPDIR" "dist/Parlz-${VER}-${ARCH}.AppImage"
+"$TOOL" --appimage-extract-and-run --no-appstream "$APPDIR" "dist/Parlz-${VER}-${ARCH}.AppImage"
 ls -la dist/*.AppImage
