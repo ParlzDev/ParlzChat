@@ -18,6 +18,14 @@ for f in resources/icons/parlz-*.png; do
     install -Dm644 "$f" "$ROOT/usr/share/icons/hicolor/${size}x${size}/apps/parlz.png"
 done
 
+WEBKIT_SO=$(objdump -p dist/parlz 2>/dev/null | awk '/NEEDED/ && /webkit2gtk/ {print $2}' | head -1)
+case "$WEBKIT_SO" in
+    libwebkit2gtk-4.0*) WEBKIT_DEP=libwebkit2gtk-4.0-37 ;;
+    libwebkit2gtk-4.1*) WEBKIT_DEP=libwebkit2gtk-4.1-0 ;;
+    *) WEBKIT_DEP="libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37" ;;
+esac
+echo "链接的 WebKit: ${WEBKIT_SO:-未知} -> 依赖 ${WEBKIT_DEP}"
+
 cat > "$ROOT/DEBIAN/control" <<EOF
 Package: parlz
 Version: ${VER}
@@ -25,7 +33,7 @@ Section: net
 Priority: optional
 Architecture: ${ARCH}
 Maintainer: Parlz <support@parlz.com>
-Depends: libc6, libgtk-3-0, libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37
+Depends: libc6, libgtk-3-0, ${WEBKIT_DEP}
 Homepage: https://chat.parlz.com
 Description: Parlz chat client
  GTK + WebKitGTK shell for the Parlz chat service (https://chat.parlz.com).

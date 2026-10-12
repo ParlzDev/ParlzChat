@@ -7,7 +7,7 @@ Summary:        Parlz chat client
 License:        MIT
 URL:            https://chat.parlz.com
 Requires:       gtk3
-Requires:       webkit2gtk4.1
+Requires:       %{parlz_webkit_dep}
 
 %description
 GTK + WebKitGTK shell for the Parlz chat service (https://chat.parlz.com).

@@ -21,6 +21,13 @@ install -Dm644 resources/parlz.png "$ROOT/usr/share/pixmaps/parlz.png"
 
 SIZE=$(du -sb "$ROOT" | cut -f1)
 
+WEBKIT_SO=$(objdump -p dist/parlz 2>/dev/null | awk '/NEEDED/ && /webkit2gtk/ {print $2}' | head -1)
+case "$WEBKIT_SO" in
+    libwebkit2gtk-4.0*) WEBKIT_DEP=webkit2gtk-4.0 ;;
+    *) WEBKIT_DEP=webkit2gtk-4.1 ;;
+esac
+echo "链接的 WebKit: ${WEBKIT_SO:-未知} -> 依赖 ${WEBKIT_DEP}"
+
 cat > "$ROOT/.PKGINFO" <<EOF
 pkgname = parlz
 pkgver = ${VER}-r0
@@ -33,7 +40,7 @@ arch = ${ARCH}
 origin = parlz
 license = MIT
 depend = gtk+3.0
-depend = webkit2gtk-4.1
+depend = ${WEBKIT_DEP}
 EOF
 
 tar -czf "dist/parlz-${VER}-r0.apk" -C "$ROOT" .PKGINFO usr
