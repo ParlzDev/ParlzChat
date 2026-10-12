@@ -1,10 +1,12 @@
 import { $, esc, toast, downloadFile } from './util.js';
 import { icon } from './icons.js';
 
-const TOOLS = ['rect', 'ellipse', 'arrow', 'pen', 'text', 'mosaic'];
+const TOOLS = ['move', 'rect', 'ellipse', 'arrow', 'pen', 'text', 'mosaic'];
 const COLORS = ['#ff3b30', '#00d95f', '#2f7bff', '#ffd400', '#0b2415'];
+const HANDLE = 9;
 
 const TOOL_ICONS = {
+  move: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l3.4 3.4h-2v5h5v-2l3.4 3-3.4 3v-2h-5v5h2l-3.4 3.4L8.6 18h2v-5h-5v2L2.2 12 5.6 9v2h5V6h-2z"/></svg>',
   rect: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   ellipse: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L17.5 6.5M17.5 6.5h-5.6M17.5 6.5v5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
@@ -13,7 +15,7 @@ const TOOL_ICONS = {
   mosaic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h5v5H4zm6 0h5v5h-5zm6 0h4v5h-4zM4 10h5v5H4zm6 0h5v5h-5zm6 0h4v5h-4zM4 16h5v4H4zm6 0h5v4h-5zm6 0h4v4h-4z"/></svg>',
 };
 
-const TOOL_TITLES = { rect: '矩形', ellipse: '椭圆', arrow: '箭头', pen: '画笔', text: '文字', mosaic: '马赛克' };
+const TOOL_TITLES = { move: '选择/移动选区', rect: '矩形', ellipse: '椭圆', arrow: '箭头', pen: '画笔', text: '文字', mosaic: '马赛克' };
 
 let layer = null;
 let canvas = null;
@@ -27,7 +29,7 @@ let url = '';
 let rect = null;
 let drag = null;
 let view = { scale: 1, x: 0, y: 0, w: 0, h: 0 };
-let tool = 'rect';
+let tool = 'move';
 let color = COLORS[0];
 let shapes = [];
 let draft = null;
@@ -217,6 +219,21 @@ function positionBar(target) {
   bar.style.top = Math.round(top) + 'px';
 }
 
+function drawHandles(ctx, target) {
+  if (target.w >= view.w - 2) {
+    return;
+  }
+  const spots = [
+    [target.x, target.y], [target.x + target.w / 2, target.y], [target.x + target.w, target.y],
+    [target.x, target.y + target.h / 2], [target.x + target.w, target.y + target.h / 2],
+    [target.x, target.y + target.h], [target.x + target.w / 2, target.y + target.h], [target.x + target.w, target.y + target.h],
+  ];
+  ctx.fillStyle = '#00ff6a';
+  spots.forEach((spot) => {
+    ctx.fillRect(spot[0] - HANDLE / 2, spot[1] - HANDLE / 2, HANDLE, HANDLE);
+  });
+}
+
 function draw() {
   if (canvas === null) {
     return;
@@ -224,21 +241,31 @@ function draw() {
   const ratio = window.devicePixelRatio || 1;
   const ctx = canvas.getContext('2d');
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = '#0b2415';
   ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
   if (image !== null) {
     const target = clip();
-    if (target.w >= 1 && target.h >= 1) {
+    ctx.drawImage(image, view.x, view.y, view.w, view.h);
+    const active = target.w >= 1 && target.h >= 1;
+    if (active) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.rect(target.x, target.y, target.w, target.h);
+      ctx.clip('evenodd');
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.restore();
       ctx.save();
       ctx.beginPath();
       ctx.rect(target.x, target.y, target.w, target.h);
       ctx.clip();
-      ctx.drawImage(image, view.x, view.y, view.w, view.h);
       paint(ctx, mapDisplay, view.scale || 1, ratio, draft === null ? shapes : shapes.concat([draft]));
       ctx.restore();
       ctx.strokeStyle = '#00ff6a';
       ctx.lineWidth = 2;
       ctx.strokeRect(target.x + 1, target.y + 1, Math.max(0, target.w - 2), Math.max(0, target.h - 2));
+      drawHandles(ctx, target);
       if (sizeNode !== null) {
         sizeNode.textContent = Math.round(target.w / (view.scale || 1)) + ' × ' + Math.round(target.h / (view.scale || 1));
       }
@@ -374,6 +401,52 @@ async function confirmSend() {
   await handler(new File([data], 'screenshot.webp', { type: 'image/webp' }));
 }
 
+function clampCanvas(x, y) {
+  return {
+    x: Math.max(view.x, Math.min(view.x + view.w, x)),
+    y: Math.max(view.y, Math.min(view.y + view.h, y)),
+  };
+}
+
+function handleAt(point, target) {
+  const spots = [
+    ['nw', target.x, target.y], ['n', target.x + target.w / 2, target.y], ['ne', target.x + target.w, target.y],
+    ['w', target.x, target.y + target.h / 2], ['e', target.x + target.w, target.y + target.h / 2],
+    ['sw', target.x, target.y + target.h], ['s', target.x + target.w / 2, target.y + target.h], ['se', target.x + target.w, target.y + target.h],
+  ];
+  for (let i = 0; i < spots.length; i++) {
+    if (Math.abs(point.x - spots[i][1]) <= HANDLE && Math.abs(point.y - spots[i][2]) <= HANDLE) {
+      return spots[i][0];
+    }
+  }
+  return '';
+}
+
+function resizeRect(start, handle, point) {
+  let left = start.x;
+  let top = start.y;
+  let right = start.x + start.w;
+  let bottom = start.y + start.h;
+  if (handle.indexOf('w') >= 0) {
+    left = point.x;
+  }
+  if (handle.indexOf('e') >= 0) {
+    right = point.x;
+  }
+  if (handle.indexOf('n') >= 0) {
+    top = point.y;
+  }
+  if (handle.indexOf('s') >= 0) {
+    bottom = point.y;
+  }
+  return {
+    x: Math.min(left, right),
+    y: Math.min(top, bottom),
+    w: Math.abs(right - left),
+    h: Math.abs(bottom - top),
+  };
+}
+
 function wire() {
   canvas.addEventListener('pointerdown', (event) => {
     if (image === null) {
@@ -389,8 +462,20 @@ function wire() {
       textStart(event);
       return;
     }
-    const point = { x: Math.max(view.x, Math.min(view.x + view.w, event.clientX)), y: Math.max(view.y, Math.min(view.y + view.h, event.clientY)) };
-    if (rect === null || clip().w >= view.w - 2) {
+    const point = clampCanvas(event.clientX, event.clientY);
+    const target = clip();
+    const unset = rect === null || target.w >= view.w - 2;
+    const handle = unset ? '' : handleAt(point, target);
+    if (handle !== '') {
+      drag = { mode: 'resize', handle, rect: { x: target.x, y: target.y, w: target.w, h: target.h } };
+      return;
+    }
+    const inside = !unset && point.x >= target.x && point.x <= target.x + target.w && point.y >= target.y && point.y <= target.y + target.h;
+    if (tool === 'move') {
+      if (inside) {
+        drag = { mode: 'move', dx: point.x - target.x, dy: point.y - target.y, w: target.w, h: target.h };
+        return;
+      }
       drag = { mode: 'select', x: point.x, y: point.y };
       rect = { x: point.x, y: point.y, w: 0, h: 0 };
       draw();
@@ -408,8 +493,19 @@ function wire() {
     if (drag === null) {
       return;
     }
+    if (drag.mode === 'move') {
+      const point = clampCanvas(event.clientX, event.clientY);
+      rect = { x: point.x - drag.dx, y: point.y - drag.dy, w: drag.w, h: drag.h };
+      draw();
+      return;
+    }
+    if (drag.mode === 'resize') {
+      rect = resizeRect(drag.rect, drag.handle, clampCanvas(event.clientX, event.clientY));
+      draw();
+      return;
+    }
     if (drag.mode === 'select') {
-      const point = { x: Math.max(view.x, Math.min(view.x + view.w, event.clientX)), y: Math.max(view.y, Math.min(view.y + view.h, event.clientY)) };
+      const point = clampCanvas(event.clientX, event.clientY);
       rect = {
         x: Math.min(drag.x, point.x),
         y: Math.min(drag.y, point.y),
@@ -549,7 +645,7 @@ export function show(imageUrl, options) {
     url = imageUrl;
     shapes = [];
     draft = null;
-    tool = 'rect';
+    tool = 'move';
     color = COLORS[0];
     layout();
     rect = fullRect();
@@ -568,7 +664,7 @@ export async function start(options) {
   }
   let grabbed = null;
   try {
-    grabbed = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    grabbed = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'monitor' } });
   } catch (error) {
     return;
   }

@@ -521,6 +521,15 @@
   cursor: zoom-out;
 }
 
+.forward-row.is-picked {
+  background: var(--surface-3);
+}
+
+.pending-tag.pick-on {
+  background: var(--green);
+  color: var(--on-green);
+}
+
 .search-msg-row {
   align-items: flex-start;
 }

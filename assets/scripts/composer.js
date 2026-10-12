@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state, on } from './state.js';
 import { $, esc, avatarHtml, toast, uidName, fmtSize, uploadUrl, downloadFile } from './util.js';
 import { apiGet, apiPost } from './api.js';
 import { uploadFile } from './upload.js';
@@ -404,6 +404,7 @@ async function send(body, kind) {
     const res = await apiPost('api/messages.php', { chat_id: chat.id, body: sendBody, kind: sendKind });
     if (kind === 'text') {
       inputNode().value = '';
+      writeDraft(chat.id, '');
       resize();
       syncTyping();
       clearQuote();
@@ -416,6 +417,57 @@ async function send(body, kind) {
     button.disabled = false;
     inputNode().focus();
   }
+}
+
+let draftChatId = 0;
+let draftTimer = 0;
+
+function draftKey(chatId) {
+  return 'parlz.draft.' + String((state.user ?? {}).id ?? 0) + '.' + chatId;
+}
+
+function readDraft(chatId) {
+  try {
+    return localStorage.getItem(draftKey(chatId)) ?? '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function writeDraft(chatId, text) {
+  try {
+    if (text.trim() === '') {
+      localStorage.removeItem(draftKey(chatId));
+      return;
+    }
+    localStorage.setItem(draftKey(chatId), text);
+  } catch (error) {
+    return;
+  }
+}
+
+function saveDraftNow() {
+  const chat = state.activeChat;
+  const input = inputNode();
+  if (chat === null || input === null) {
+    return;
+  }
+  writeDraft(chat.id, input.value);
+}
+
+function applyDraft(chatId) {
+  const input = inputNode();
+  if (input === null || draftChatId === chatId) {
+    return;
+  }
+  const previous = draftChatId;
+  draftChatId = chatId;
+  if (previous !== 0) {
+    writeDraft(previous, input.value);
+  }
+  input.value = readDraft(chatId);
+  resize();
+  syncTyping();
 }
 
 export function focus() {
@@ -645,10 +697,31 @@ export function init() {
     resize();
     syncTyping();
     updateMentions();
+    window.clearTimeout(draftTimer);
+    draftTimer = window.setTimeout(saveDraftNow, 400);
   });
 
   input.addEventListener('click', () => hideMentions());
   input.addEventListener('blur', () => window.setTimeout(hideMentions, 150));
+
+  on('open-chat', (chatId) => {
+    let tries = 0;
+    const tick = () => {
+      tries++;
+      const chat = state.activeChat;
+      if (chat !== null && chat.id === Number(chatId)) {
+        applyDraft(chat.id);
+        return;
+      }
+      if (tries < 12) {
+        window.setTimeout(tick, 60);
+      }
+    };
+    window.setTimeout(tick, 60);
+  });
+  if (state.activeChat !== null) {
+    applyDraft(state.activeChat.id);
+  }
 
   input.addEventListener('paste', (event) => {
     const items = event.clipboardData ? Array.from(event.clipboardData.items) : [];

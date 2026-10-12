@@ -11,6 +11,7 @@ import * as messages from './messages.js';
 let bodyNode = null;
 let pendingForward = [];
 let forwardMode = 'single';
+let forwardPicked = new Set();
 let currentGroup = null;
 
 export function open(title, html) {
@@ -115,18 +116,23 @@ async function searchUsers(query) {
 export function openForwardPicker(ids) {
   pendingForward = Array.isArray(ids) ? ids.map((id) => Number(id)) : [];
   forwardMode = pendingForward.length > 1 ? 'merged' : 'single';
+  forwardPicked = new Set();
   renderForwardPicker();
 }
 
 function renderForwardPicker() {
   const current = state.activeChat ? state.activeChat.id : 0;
-  const rows = state.chats.map((chat) =>
-    '<div class="row" data-act="act-forward" data-id="' + chat.id + '">' +
-    avatarHtml({ id: chat.type === 'dm' ? chat.avatar_user : chat.id, nickname: chat.title, avatar: chat.avatar }, 'avatar-sm') +
-    '<span class="row-main"><span class="row-name">' + esc(chat.title) +
-    (chat.id === current ? '<span class="pending-tag">当前</span>' : '') + '</span>' +
-    '<span class="row-sub mono">' + esc(chat.uid ?? '') + '</span></span>' +
-    '<span class="row-actions"><span class="pending-tag">' + (chat.type === 'group' ? '群聊' : '私聊') + '</span></span></div>').join('');
+  const rows = state.chats.map((chat) => {
+    const on = forwardPicked.has(chat.id);
+    return '<div class="row forward-row' + (on ? ' is-picked' : '') + '" data-act="act-forward" data-id="' + chat.id + '">' +
+      avatarHtml({ id: chat.type === 'dm' ? chat.avatar_user : chat.id, nickname: chat.title, avatar: chat.avatar }, 'avatar-sm') +
+      '<span class="row-main"><span class="row-name">' + esc(chat.title) +
+      (chat.id === current ? '<span class="pending-tag">当前</span>' : '') + '</span>' +
+      '<span class="row-sub mono">' + esc(chat.uid ?? '') + '</span></span>' +
+      '<span class="row-actions">' + (on
+        ? '<span class="pending-tag pick-on">已选</span>'
+        : '<span class="pending-tag">' + (chat.type === 'group' ? '群聊' : '私聊') + '</span>') + '</span></div>';
+  }).join('');
 
   const mode = '<div class="segmented forward-mode" id="forward-mode">' +
     '<button type="button" data-act="forward-mode" data-mode="merged"' + (forwardMode === 'merged' ? ' class="is-active"' : '') + '>合并转发</button>' +
@@ -136,20 +142,23 @@ function renderForwardPicker() {
       ? '合并成一条聊天记录卡片，对方点开看全部内容'
       : '每条消息分别发给对方') + '</p>';
 
-  open('转发到…', '<p class="danger-note">已选 ' + pendingForward.length + ' 条消息</p>' + mode +
-    '<h3 class="section-title">选择会话</h3>' +
-    (rows === '' ? '<p class="empty-note">还没有其它会话</p>' : rows));
+  open('转发到…', '<p class="danger-note">已选 ' + pendingForward.length + ' 条消息 · 目标 ' + forwardPicked.size + ' 个会话</p>' + mode +
+    '<h3 class="section-title">选择会话（可多选）</h3>' +
+    (rows === '' ? '<p class="empty-note">还没有其它会话</p>' : rows) +
+    '<div class="form-actions setting-actions">' +
+      '<button type="button" class="btn btn-primary" data-act="forward-go"' + (forwardPicked.size === 0 ? ' disabled' : '') + '>转发到 ' + forwardPicked.size + ' 个会话</button>' +
+    '</div>');
 }
 
-async function forwardTo(chatId) {
+async function forwardToChats(chatIds) {
   const ids = pendingForward;
   pendingForward = [];
   const mode = forwardMode;
   const targets = ids.map((id) => messages.messageById(id)).filter((message) => message !== null);
   const active = state.activeChat ? state.activeChat.id : 0;
   close();
-  let sent = 0;
 
+  let mergedBody = '';
   if (mode === 'merged') {
     const items = [];
     for (const message of targets) {
@@ -185,40 +194,51 @@ async function forwardTo(chatId) {
       return;
     }
     const title = (state.activeChat ? state.activeChat.title : '会话') + '的聊天记录';
-    try {
-      const res = await apiPost('api/messages.php', {
-        chat_id: chatId,
-        kind: 'merged',
-        body: JSON.stringify({ title, items }),
-      });
-      sent = 1;
-      if (chatId === active) {
-        messages.merge([res.message]);
-      }
-    } catch (error) {
-      toast(error.message, true);
-    }
-  } else {
-    for (const message of targets) {
-      if (message.kind !== 'text' && message.kind !== 'sticker' && message.kind !== 'csticker' && message.kind !== 'image' && message.kind !== 'merged' && message.kind !== 'quote' && message.kind !== 'file') {
-        continue;
-      }
+    mergedBody = JSON.stringify({ title, items });
+  }
+
+  let okChats = 0;
+  let okMessages = 0;
+  for (const chatId of chatIds) {
+    let count = 0;
+    if (mode === 'merged') {
       try {
-        const res = await apiPost('api/messages.php', { chat_id: chatId, body: message.body, kind: message.kind });
-        sent++;
+        const res = await apiPost('api/messages.php', { chat_id: chatId, kind: 'merged', body: mergedBody });
+        count = 1;
         if (chatId === active) {
           messages.merge([res.message]);
         }
       } catch (error) {
         toast(error.message, true);
-        break;
       }
+    } else {
+      for (const message of targets) {
+        if (message.kind !== 'text' && message.kind !== 'sticker' && message.kind !== 'csticker' && message.kind !== 'image' && message.kind !== 'merged' && message.kind !== 'quote' && message.kind !== 'file') {
+          continue;
+        }
+        try {
+          const res = await apiPost('api/messages.php', { chat_id: chatId, body: message.body, kind: message.kind });
+          count++;
+          if (chatId === active) {
+            messages.merge([res.message]);
+          }
+        } catch (error) {
+          toast(error.message, true);
+          break;
+        }
+      }
+    }
+    if (count > 0) {
+      okChats++;
+      okMessages += count;
     }
   }
 
   messages.setSelectMode(false);
-  if (sent > 0) {
-    toast(mode === 'merged' ? '已合并转发 1 条聊天记录' : '已转发 ' + sent + ' 条');
+  if (okChats > 0) {
+    toast(chatIds.length > 1
+      ? '已转发到 ' + okChats + ' 个会话'
+      : (mode === 'merged' ? '已合并转发 1 条聊天记录' : '已转发 ' + okMessages + ' 条'));
     chats.refresh().catch(() => {});
   }
 }
@@ -465,7 +485,16 @@ export async function init() {
       forwardMode = target.dataset.mode === 'single' ? 'single' : 'merged';
       renderForwardPicker();
     } else if (act === 'act-forward') {
-      forwardTo(id);
+      if (forwardPicked.has(id)) {
+        forwardPicked.delete(id);
+      } else {
+        forwardPicked.add(id);
+      }
+      renderForwardPicker();
+    } else if (act === 'forward-go') {
+      if (forwardPicked.size > 0) {
+        forwardToChats([...forwardPicked]).catch(() => {});
+      }
     } else if (act === 'act-dm') {
       openChatWith(id);
     } else if (act === 'act-group-form') {
