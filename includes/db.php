@@ -226,13 +226,16 @@ function migrate(PDO $pdo): void
     )');
 
     try {
-        $pdo->exec("CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(body, content='messages', content_rowid='id')");
+        $pdo->exec('DROP TABLE IF EXISTS messages_fts');
+        try {
+            $pdo->exec("CREATE VIRTUAL TABLE messages_fts USING fts5(body, content='messages', content_rowid='id', tokenize='trigram')");
+        } catch (Throwable $tokenizerError) {
+            $pdo->exec("CREATE VIRTUAL TABLE messages_fts USING fts5(body, content='messages', content_rowid='id')");
+        }
         $pdo->exec('CREATE TRIGGER IF NOT EXISTS messages_fts_ai AFTER INSERT ON messages BEGIN INSERT INTO messages_fts(rowid, body) VALUES (new.id, new.body); END');
         $pdo->exec('CREATE TRIGGER IF NOT EXISTS messages_fts_ad AFTER DELETE ON messages BEGIN INSERT INTO messages_fts(messages_fts, rowid, body) VALUES (\'delete\', old.id, old.body); END');
         $pdo->exec('CREATE TRIGGER IF NOT EXISTS messages_fts_au AFTER UPDATE ON messages BEGIN INSERT INTO messages_fts(messages_fts, rowid, body) VALUES (\'delete\', old.id, old.body); INSERT INTO messages_fts(rowid, body) VALUES (new.id, new.body); END');
-        if ((int)$pdo->query('SELECT COUNT(*) FROM messages_fts')->fetchColumn() === 0) {
-            $pdo->exec('INSERT INTO messages_fts(rowid, body) SELECT id, body FROM messages');
-        }
+        $pdo->exec('INSERT INTO messages_fts(rowid, body) SELECT id, body FROM messages');
     } catch (Throwable $ftsError) {
         $pdo->exec('CREATE TABLE IF NOT EXISTS messages_search_off (id INTEGER PRIMARY KEY)');
     }

@@ -14,6 +14,7 @@ import * as composer from './composer.js';
 import * as drawer from './drawer.js';
 import * as contextmenu from './contextmenu.js';
 import * as preview from './preview.js';
+import * as search from './search.js';
 import * as scan from './scan.js';
 import * as calls from './call.js';
 import * as poller from './poller.js';
@@ -403,6 +404,7 @@ function wire() {
   drawer.init();
   contextmenu.init();
   preview.init();
+  search.init();
   scan.init();
   calls.init();
   auth.initAuth(startSession, (tab) => navigate(tab, 0, { replace: true }));

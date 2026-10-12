@@ -155,6 +155,94 @@ function device_check(int $userId, string $token): bool
     return true;
 }
 
+function fts_usable(string $text): bool
+{
+    $terms = preg_split('/\s+/u', trim($text)) ?: [];
+    if ($terms === []) {
+        return false;
+    }
+    foreach ($terms as $term) {
+        if (mb_strlen($term) < 3) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function fts_query(string $text): string
+{
+    $terms = preg_split('/\s+/u', $text) ?: [];
+    $parts = [];
+    foreach ($terms as $term) {
+        $clean = trim((string)preg_replace('/["*()\-:^]+/u', ' ', $term));
+        if ($clean === '') {
+            continue;
+        }
+        $parts[] = '"' . $clean . '"';
+    }
+    return implode(' ', $parts);
+}
+
+function messages_search(int $userId, string $query, int $limit = 60): array
+{
+    $pdo = db();
+    $ids = [];
+    foreach (chats_for_user($userId) as $chat) {
+        $ids[] = (int)$chat['id'];
+    }
+    if ($ids === []) {
+        return [];
+    }
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $columns = 'm.id, m.chat_id, m.user_id, m.kind, m.body, m.created_at, c.type AS chat_type, c.name AS chat_name,
+        u.nickname AS sender_nick, u.username AS sender_user,
+        (SELECT u2.nickname FROM chat_members cm2 JOIN users u2 ON u2.id = cm2.user_id WHERE cm2.chat_id = c.id AND cm2.user_id <> ? LIMIT 1) AS peer_nick';
+    $joins = ' FROM messages m JOIN chats c ON c.id = m.chat_id JOIN users u ON u.id = m.user_id';
+
+    $rows = [];
+    if (fts_usable($query)) {
+        $match = fts_query($query);
+        if ($match !== '') {
+            try {
+                $stmt = $pdo->prepare('SELECT ' . $columns . ' FROM messages_fts f JOIN messages m ON m.id = f.rowid
+                    JOIN chats c ON c.id = m.chat_id JOIN users u ON u.id = m.user_id
+                    WHERE messages_fts MATCH ? AND m.chat_id IN (' . $in . ') ORDER BY m.id DESC LIMIT ' . (int)$limit);
+                $stmt->execute(array_merge([$userId, $match], $ids));
+                $rows = $stmt->fetchAll();
+            } catch (Throwable $ftsError) {
+                $rows = [];
+            }
+        }
+    }
+    if ($rows === []) {
+        $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query) . '%';
+        $stmt = $pdo->prepare('SELECT ' . $columns . $joins . ' WHERE m.body LIKE ? ESCAPE \'\\\' AND m.chat_id IN (' . $in . ')
+            ORDER BY m.id DESC LIMIT ' . (int)$limit);
+        $stmt->execute(array_merge([$userId, $like], $ids));
+        $rows = $stmt->fetchAll();
+    }
+
+    $results = [];
+    foreach ($rows as $row) {
+        $isGroup = (string)$row['chat_type'] === 'group';
+        $sender = (string)$row['sender_nick'] !== '' ? (string)$row['sender_nick'] : (string)$row['sender_user'];
+        $results[] = [
+            'id' => (int)$row['id'],
+            'chat_id' => (int)$row['chat_id'],
+            'kind' => (string)$row['kind'],
+            'body' => mb_substr((string)$row['body'], 0, 400),
+            'created_at' => (int)$row['created_at'],
+            'chat_title' => $isGroup
+                ? ((string)$row['chat_name'] !== '' ? (string)$row['chat_name'] : '群聊')
+                : ((string)($row['peer_nick'] ?? '') !== '' ? (string)$row['peer_nick'] : (string)$row['chat_name']),
+            'is_group' => $isGroup,
+            'sender' => $sender,
+            'mine' => (int)$row['user_id'] === $userId,
+        ];
+    }
+    return $results;
+}
+
 function user_devices(int $userId, string $currentToken): array
 {
     $stmt = db()->prepare('SELECT id, token, label, ip, ua, created_at, last_seen FROM devices WHERE user_id = ? ORDER BY last_seen DESC LIMIT 20');

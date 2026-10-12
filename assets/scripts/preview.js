@@ -3,10 +3,16 @@ import { icon } from './icons.js';
 
 const OFFICE = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
 const INLINE = new Set(['pdf', 'txt', 'md', 'csv']);
+const PICTURE = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ico']);
 
 let layer = null;
+let imageUrl = '';
 
 function close() {
+  if (imageUrl !== '') {
+    URL.revokeObjectURL(imageUrl);
+    imageUrl = '';
+  }
   if (layer !== null) {
     layer.remove();
     layer = null;
@@ -78,8 +84,51 @@ function shell(title, extra, bodyHtml) {
   return node;
 }
 
+function openImage(url, title) {
+  const internal = url.origin === window.location.origin;
+  const node = shell(hostTitle(url, title), headExtra(url, internal),
+    '<div class="embed-image-wrap" id="pv-holder"><p class="setting-desc">正在加载图片…</p></div>');
+  const source = internal ? absolute(url) : 'proxy.php?url=' + encodeURIComponent(absolute(url));
+  fetch(source, { credentials: 'same-origin' })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error('图片打不开');
+      }
+      return response.blob();
+    })
+    .then((blob) => {
+      if (layer !== node) {
+        return;
+      }
+      const holder = node.querySelector('#pv-holder');
+      if (holder === null) {
+        return;
+      }
+      imageUrl = URL.createObjectURL(blob);
+      holder.innerHTML = '';
+      const image = document.createElement('img');
+      image.className = 'embed-image';
+      image.alt = '';
+      image.src = imageUrl;
+      image.addEventListener('click', () => {
+        image.classList.toggle('is-actual');
+      });
+      holder.appendChild(image);
+    })
+    .catch((error) => {
+      const holder = node.querySelector('#pv-holder');
+      if (holder !== null) {
+        holder.innerHTML = '<p class="setting-desc">' + esc(error.message || '图片打不开') + '</p>';
+      }
+    });
+}
+
 function openFrame(url, title) {
   const internal = url.origin === window.location.origin;
+  if (PICTURE.has(extensionOf(url))) {
+    openImage(url, title);
+    return;
+  }
   shell(hostTitle(url, title), headExtra(url, internal), '<iframe class="embed-frame" src="' + esc(frameSrc(url, internal)) + '"></iframe>');
 }
 

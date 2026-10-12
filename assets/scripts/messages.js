@@ -402,6 +402,51 @@ export function messageById(id) {
   return state.messages.find((message) => message.id === target) ?? null;
 }
 
+function flashMessage(node) {
+  node.classList.remove('msg-flash');
+  void node.offsetWidth;
+  node.classList.add('msg-flash');
+  window.setTimeout(() => node.classList.remove('msg-flash'), 3000);
+}
+
+export async function focusMessage(messageId) {
+  const chat = state.activeChat;
+  if (chat === null || messageId <= 0) {
+    return;
+  }
+  let row = $('#chat-body').querySelector('[data-msg="' + messageId + '"]');
+  if (row === null) {
+    try {
+      const res = await apiGet('api/messages.php', { chat_id: chat.id, before: messageId + 1 });
+      state.messages = res.messages ?? [];
+      state.hasMore = res.has_more !== false;
+      render(false);
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+    } catch (error) {
+      return;
+    }
+    row = $('#chat-body').querySelector('[data-msg="' + messageId + '"]');
+  }
+  if (row === null) {
+    return;
+  }
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  flashMessage(row);
+}
+
+export async function jumpTo(chatId, messageId) {
+  if (messageId <= 0) {
+    return;
+  }
+  if (state.activeChat === null || state.activeChat.id !== chatId) {
+    if (chatId <= 0) {
+      return;
+    }
+    await chats.open(chatId);
+  }
+  await focusMessage(messageId);
+}
+
 function updateSelectBar() {
   const bar = $('#select-bar');
   if (bar === null) {
@@ -495,11 +540,8 @@ export function init() {
     const quoteCard = event.target.closest('[data-quote]');
     if (quoteCard !== null) {
       const id = Number(quoteCard.dataset.quote);
-      const row = id > 0 ? $('#chat-body').querySelector('[data-msg="' + id + '"]') : null;
-      if (row !== null) {
-        row.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        row.classList.add('msg-flash');
-        window.setTimeout(() => row.classList.remove('msg-flash'), 1300);
+      if (id > 0) {
+        jumpTo(state.activeChat === null ? 0 : state.activeChat.id, id).catch(() => {});
       }
       return;
     }
