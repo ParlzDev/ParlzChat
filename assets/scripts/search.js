@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { esc, fmtListTime } from './util.js';
+import { $, esc, fmtListTime } from './util.js';
 import { apiGet } from './api.js';
 import * as messages from './messages.js';
 

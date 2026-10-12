@@ -395,18 +395,28 @@ function wire() {
     chats.open(chatId);
   });
 
-  chats.init();
-  messages.init();
-  contacts.init();
-  profile.init();
-  settings.init();
-  composer.init();
-  drawer.init();
-  contextmenu.init();
-  preview.init();
-  search.init();
-  scan.init();
-  calls.init();
+  const safeInit = (name, run) => {
+    try {
+      run();
+    } catch (error) {
+      if (typeof console !== 'undefined' && typeof console.error === 'function') {
+        console.error('Parlz init failed: ' + name, error);
+      }
+    }
+  };
+
+  safeInit('chats', () => chats.init());
+  safeInit('messages', () => messages.init());
+  safeInit('contacts', () => contacts.init());
+  safeInit('profile', () => profile.init());
+  safeInit('settings', () => settings.init());
+  safeInit('composer', () => composer.init());
+  safeInit('drawer', () => drawer.init());
+  safeInit('contextmenu', () => contextmenu.init());
+  safeInit('preview', () => preview.init());
+  safeInit('search', () => search.init());
+  safeInit('scan', () => scan.init());
+  safeInit('calls', () => calls.init());
   auth.initAuth(startSession, (tab) => navigate(tab, 0, { replace: true }));
 }
 
