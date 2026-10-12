@@ -1,51 +1,11 @@
-import { toast, copyText, esc } from './util.js';
+import { toast, copyText } from './util.js';
 import { icon } from './icons.js';
+import { openPreview } from './preview.js';
 
 let layer = null;
 let stream = null;
 let rafId = 0;
 let active = false;
-let embedLayer = null;
-
-function closeEmbed() {
-  if (embedLayer !== null) {
-    embedLayer.remove();
-    embedLayer = null;
-  }
-}
-
-function openEmbed(url, title) {
-  closeEmbed();
-  embedLayer = document.createElement('div');
-  embedLayer.className = 'embed-layer';
-  embedLayer.innerHTML =
-    '<header class="embed-head">' +
-      '<span class="embed-title">' + esc(title) + '</span>' +
-      '<a class="embed-open" href="' + esc(url) + '" target="_blank" rel="noopener" title="在浏览器打开">' + icon('external') + '</a>' +
-      '<button type="button" class="embed-close" title="关闭">' + icon('close') + '</button>' +
-    '</header>' +
-    '<iframe class="embed-frame" src="' + esc(url) + '"></iframe>';
-  document.body.appendChild(embedLayer);
-  embedLayer.querySelector('.embed-close').addEventListener('click', closeEmbed);
-}
-
-window.addEventListener('message', (event) => {
-  if (event.origin !== window.location.origin) {
-    return;
-  }
-  const data = event.data;
-  if (data === null || typeof data !== 'object') {
-    return;
-  }
-  if (data.type === 'parlz-embed-close') {
-    closeEmbed();
-    return;
-  }
-  if (data.type === 'parlz-embed-open' && typeof data.url === 'string' && data.url !== '') {
-    closeEmbed();
-    window.location.href = data.url;
-  }
-});
 
 function stop() {
   active = false;
@@ -69,7 +29,7 @@ export function handleScan(text) {
     return;
   }
   if (/^[AU]\d{1,12}$/i.test(value)) {
-    openEmbed('embed.php?uid=' + encodeURIComponent(value.toUpperCase()), 'Parlz');
+    openPreview('embed.php?uid=' + encodeURIComponent(value.toUpperCase()), 'Parlz');
     return;
   }
   let url = null;
@@ -83,17 +43,17 @@ export function handleScan(text) {
       const scan = url.searchParams.get('scan');
       const uid = url.searchParams.get('uid');
       if (scan !== null && scan !== '') {
-        openEmbed('embed.php?scan=' + encodeURIComponent(scan), '登录确认');
+        openPreview('embed.php?scan=' + encodeURIComponent(scan), '登录确认');
         return;
       }
       if (uid !== null && uid !== '') {
-        openEmbed('embed.php?uid=' + encodeURIComponent(uid), 'Parlz');
+        openPreview('embed.php?uid=' + encodeURIComponent(uid), 'Parlz');
         return;
       }
-      openEmbed(url.href, 'Parlz');
+      openPreview(url.href, 'Parlz');
       return;
     }
-    window.location.href = url.href;
+    openPreview(url.href, url.host);
     return;
   }
   copyText(value);
