@@ -391,19 +391,23 @@ function wire() {
         out.innerHTML = '<p class="empty-note">正在收集候选（约 7 秒）…</p>';
       }
       try {
-        const { selfCheck } = await import('./call.js');
+        const { selfCheck, relayCheck, relayUrls } = await import('./call.js');
         const result = await selfCheck();
+        const relay = relayUrls().length > 0 ? await relayCheck(6000) : { ok: false, url: '', errors: ['服务器没下发中继地址'] };
         const total = result.types.host + result.types.srflx + result.types.relay;
-        const verdict = result.types.relay > 0
+        const verdict = relay.ok
           ? '中继可用：即使打不通也能通过服务器转发'
           : result.types.srflx > 0
-            ? '只有公网直连通路（NAT 打洞），严格 NAT 下可能连不上'
-            : '只拿到局域网地址，跨网络通话大概率不成';
+            ? '中继不可达（' + relay.url + '），只能靠 NAT 打洞，严格 NAT 下会连不上'
+            : '中继不可达（' + relay.url + '）且没有公网地址，跨网络通话必失败';
         if (out !== null) {
           out.innerHTML =
             '<div class="setting-row"><span class="setting-title">host / srflx / relay</span>' +
             '<span class="mono">' + result.types.host + ' / ' + result.types.srflx + ' / ' + result.types.relay + '</span></div>' +
-            '<p class="setting-desc">' + (total === 0 ? '没有收集到任何候选，检查网络后重试' : verdict) + '</p>' +
+            '<div class="setting-row"><span class="setting-title">中继 ' + (relay.ok ? '通' : '不通') + '</span>' +
+            '<span class="mono">' + esc(relay.url || '未配置') + '</span></div>' +
+            '<p class="setting-desc">' + (total === 0 ? '没有收集到任何候选，检查网络后重试' : esc(verdict)) + '</p>' +
+            ((relay.errors ?? []).length > 0 ? '<p class="setting-desc device-ua mono">' + esc(relay.errors.slice(0, 2).join('　')) + '</p>' : '') +
             (result.details.length > 0 ? '<p class="setting-desc device-ua mono">' + esc(result.details.join('　')) + '</p>' : '');
         }
       } catch (error) {

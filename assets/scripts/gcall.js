@@ -3,7 +3,7 @@ import { $, esc, avatarHtml, toast } from './util.js';
 import { apiPost } from './api.js';
 import { icon } from './icons.js';
 import { levelChips } from './level.js';
-import { iceServers, refreshIce } from './call.js';
+import { iceServers, refreshIce, relayCheck, relayUrls } from './call.js';
 
 const MAX = 8;
 const NEAR = 700;
@@ -230,6 +230,24 @@ function dropPeer(uid, keepTile) {
   renderList();
 }
 
+let relayReportedAt = 0;
+
+async function reportNoPath(uid) {
+  if (Date.now() - relayReportedAt < 20000) {
+    return;
+  }
+  relayReportedAt = Date.now();
+  const urls = relayUrls();
+  if (urls.length === 0) {
+    toast('和 ' + nameOf(uid) + ' 连不上，服务器也没下发中继地址', true);
+    return;
+  }
+  const result = await relayCheck(6000).catch(() => ({ ok: false, url: urls[0], errors: [] }));
+  toast(result.ok
+    ? '中继能通，但和 ' + nameOf(uid) + ' 还是连不上，让对方重进一次'
+    : '中继 ' + result.url + ' 连不上：' + ((result.errors ?? [])[0] ?? '端口没放行或中继没起来'), true);
+}
+
 function createPeer(uid, initiator) {
   const known = peerEntry(uid);
   if (known !== null) {
@@ -255,6 +273,7 @@ function createPeer(uid, initiator) {
     node: null,
     speaking: false,
     retrying: false,
+    fails: 0,
   };
   peers.set(uid, entry);
   localStream.getAudioTracks().forEach((track) => pc.addTrack(track, localStream));
@@ -276,8 +295,13 @@ function createPeer(uid, initiator) {
       renderList();
     } else if (pc.connectionState === 'failed' && isActive() && !entry.retrying) {
       entry.retrying = true;
-      toast('和 ' + nameOf(uid) + ' 之间没有可用通路，正在重试', true);
-      window.setTimeout(() => renegotiate(uid), 2400);
+      entry.fails += 1;
+      if (entry.fails >= 2) {
+        reportNoPath(uid).catch(() => {});
+      } else {
+        toast('和 ' + nameOf(uid) + ' 之间没有可用通路，正在重试', true);
+        window.setTimeout(() => renegotiate(uid), 2400);
+      }
     }
   };
   return entry;

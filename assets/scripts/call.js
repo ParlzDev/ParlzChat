@@ -79,6 +79,10 @@ let remoteVideoActive = false;
 let avatarCache = '';
 let actionsCache = '';
 let lastIceError = '';
+let candSeen = { host: 0, srflx: 0, relay: 0 };
+let iceErrs = [];
+let relayVerdict = null;
+let probing = false;
 let diagSentAt = 0;
 let currentSince = 0;
 let tickCount = 0;
@@ -106,6 +110,71 @@ function sendDiag() {
     err: lastIceError,
   });
   apiPost('api/call.php', { action: 'diag', id: current.id, data }).catch(() => {});
+}
+
+export function iceUrls() {
+  return iceServers().map((server) => String(Array.isArray(server.urls) ? server.urls[0] : server.urls));
+}
+
+export function relayUrls() {
+  return iceUrls().filter((url) => url.indexOf('turn') === 0);
+}
+
+export async function relayCheck(waitMs = 6000) {
+  await refreshIce(true);
+  const servers = iceServers().filter((server) => String(Array.isArray(server.urls) ? server.urls[0] : server.urls).indexOf('turn') === 0);
+  if (servers.length === 0) {
+    return { ok: false, url: '', ms: 0, errors: ['服务器没下发中继地址'] };
+  }
+  const started = Date.now();
+  let relay = false;
+  const errors = [];
+  const pc = new RTCPeerConnection({ iceServers: servers });
+  pc.onicecandidate = (event) => {
+    if (event.candidate !== null && /\btyp relay\b/.test(event.candidate.candidate)) {
+      relay = true;
+    }
+  };
+  pc.onicecandidateerror = (event) => {
+    const text = String(event.errorText ?? event.errorCode ?? '未知错误');
+    const line = String(event.url ?? servers[0]) + ' → ' + text;
+    if (!errors.includes(line)) {
+      errors.push(line);
+    }
+  };
+  try {
+    pc.createDataChannel('parlz-relay-check');
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const deadline = Date.now() + waitMs;
+    while (!relay && Date.now() < deadline) {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+  } finally {
+    pc.close();
+  }
+  return { ok: relay, url: iceUrls().filter((u) => u.indexOf('turn') === 0)[0] ?? '', ms: Date.now() - started, errors };
+}
+
+function resetCounters() {
+  candSeen = { host: 0, srflx: 0, relay: 0 };
+  iceErrs = [];
+  relayVerdict = null;
+  probing = false;
+}
+
+async function diagnoseFailure() {
+  if (probing || relayVerdict !== null) {
+    return;
+  }
+  probing = true;
+  setStatusText('通路断了，正在检查中继…');
+  renderCallUi();
+  const result = await relayCheck(6000).catch(() => ({ ok: false, url: '', errors: ['检测失败'] }));
+  probing = false;
+  relayVerdict = result;
+  sendDiag();
+  renderCallUi();
 }
 
 export async function selfCheck(waitMs = 6000) {
@@ -158,6 +227,25 @@ function setStatusText(text) {
   }
 }
 
+function relayVerdictText() {
+  if (relayVerdict === null) {
+    return '';
+  }
+  const lines = ['直连 ' + candSeen.host + ' · 公网 ' + candSeen.srflx + ' · 中继 ' + candSeen.relay];
+  if (relayVerdict.ok) {
+    lines.push('中继是通的，点绿色话筒重连');
+  } else if (relayVerdict.url !== '') {
+    lines.push('中继 ' + relayVerdict.url + ' 连不上');
+    const first = (relayVerdict.errors ?? [])[0];
+    if (typeof first === 'string' && first !== '') {
+      lines.push(first);
+    }
+  } else {
+    lines.push('服务器没下发中继地址');
+  }
+  return lines.join('　');
+}
+
 function renderCallUi() {
   const box = layer();
   if (box === null || current === null) {
@@ -188,7 +276,11 @@ function renderCallUi() {
   } else if (outgoing) {
     setStatusText('正在呼叫…');
   } else if (active) {
-    if (pc !== null && (pc.connectionState === 'failed' || pc.connectionState === 'closed')) {
+    if (relayVerdict !== null) {
+      setStatusText(relayVerdictText());
+    } else if (probing) {
+      setStatusText('通路断了，正在检查中继…');
+    } else if (pc !== null && (pc.connectionState === 'failed' || pc.connectionState === 'closed')) {
       setStatusText('媒体连接已断开');
     } else if (pc !== null && pc.connectionState === 'connected') {
       updateTimer();
@@ -212,12 +304,18 @@ function renderCallUi() {
     const muted = micMuted();
     const camOff = cameraOff();
     const hasCamera = current.kind === 'video' && localStream !== null && localStream.getVideoTracks().length > 0;
+    if (relayVerdict !== null || probing) {
+      actionsMarkup =
+        '<button type="button" class="call-btn call-accept" data-call-act="retry" title="重连">' + icon('phone') + '</button>' +
+        '<button type="button" class="call-btn call-decline" data-call-act="hangup" title="挂断">' + icon('hangup') + '</button>';
+    } else {
     actionsMarkup =
       '<button type="button" class="call-btn' + (muted ? ' is-off' : '') + '" data-call-act="mute" title="' + (muted ? '取消静音' : '静音') + '">' + icon(muted ? 'micOff' : 'mic') + '</button>' +
       (hasCamera
         ? '<button type="button" class="call-btn' + (camOff ? ' is-off' : '') + '" data-call-act="camera" title="' + (camOff ? '打开摄像头' : '关闭摄像头') + '">' + icon(camOff ? 'camOff' : 'video') + '</button>'
         : '') +
       '<button type="button" class="call-btn call-decline" data-call-act="hangup" title="挂断">' + icon('phone') + '</button>';
+    }
   }
   if (actionsCache !== actionsMarkup) {
     actionsCache = actionsMarkup;
@@ -390,6 +488,7 @@ function finish(reasonStatus) {
   }
   current = null;
   notifiedIncoming = false;
+  resetCounters();
   cleanupMedia();
 }
 
@@ -498,7 +597,19 @@ function createPeer() {
   localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
   pc.onicecandidate = (event) => {
     if (event.candidate !== null && current !== null) {
+      const match = /\btyp (\w+)/.exec(event.candidate.candidate);
+      const type = match === null ? 'other' : match[1];
+      if (candSeen[type] !== undefined) {
+        candSeen[type] += 1;
+      }
       apiPost('api/call.php', { action: 'ice', id: current.id, candidate: event.candidate.toJSON() }).catch(() => {});
+    }
+  };
+  pc.onicecandidateerror = (event) => {
+    const line = String(event.url ?? '') + ' → ' + String(event.errorText ?? event.errorCode ?? '失败');
+    lastIceError = line;
+    if (!iceErrs.includes(line)) {
+      iceErrs.push(line);
     }
   };
   pc.ontrack = (event) => {
@@ -517,8 +628,7 @@ function createPeer() {
       tuneSenders();
       renderCallUi();
     } else if (pc.connectionState === 'failed') {
-      toast('媒体连接失败，双方网络都没有可用的直连或中继通路', true);
-      hangup();
+      diagnoseFailure().catch(() => {});
     }
   };
   return pc;
@@ -846,6 +956,7 @@ export async function start(peerId, kind) {
     toast('你正在通话中', true);
     return;
   }
+  resetCounters();
   await refreshIce();
   try {
     const res = await apiPost('api/call.php', { action: 'start', user_id: peerId, kind });
@@ -881,6 +992,17 @@ function actionsClick(event) {
   }
   if (act === 'accept') {
     acceptCall().catch(() => {});
+    return;
+  }
+  if (act === 'retry') {
+    const peerId = current.peer ? current.peer.id : 0;
+    const kind = current.kind === 'video' ? 'video' : 'audio';
+    cancelOrHangup();
+    if (peerId > 0) {
+      window.setTimeout(() => {
+        start(peerId, kind).catch(() => {});
+      }, 600);
+    }
     return;
   }
   if (act === 'mute') {
