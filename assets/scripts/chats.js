@@ -308,6 +308,7 @@ export async function open(chatId) {
   readSentId = 0;
   readSentAt = 0;
   messages.clear();
+  messages.showLoading();
   composer.clearQuote();
   renderHead();
   showPane();

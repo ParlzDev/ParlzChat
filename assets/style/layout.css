@@ -20,7 +20,7 @@
 .rail-avatar {
   width: 46px;
   height: 46px;
-  border-radius: 14px;
+  border-radius: 50%;
   font-size: 17px;
   cursor: pointer;
 }
@@ -33,6 +33,14 @@
 .rail-avatar.is-active {
   background: var(--surface-3);
   border-color: var(--green);
+}
+
+.rail-avatar .rail-face {
+  display: contents;
+}
+
+.rail-avatar .rail-label {
+  display: none;
 }
 
 .rail-sep {
@@ -52,6 +60,10 @@
   flex: 1;
 }
 
+.rail-pill {
+  display: none;
+}
+
 .rail-tab {
   position: relative;
   display: flex;
@@ -66,9 +78,14 @@
 }
 
 .rail-tab svg {
+  box-sizing: content-box;
   width: 22px;
   height: 22px;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--surface-2);
   fill: currentColor;
+  transition: background-color 180ms linear, color 180ms linear;
 }
 
 .rail-label {
@@ -82,6 +99,11 @@
 }
 
 .rail-tab.is-active {
+  background: none;
+  color: var(--green-ink);
+}
+
+.rail-tab.is-active svg {
   background: var(--green);
   color: var(--on-green);
 }
@@ -133,7 +155,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 14px 16px 10px;
+  min-height: 56px;
+  padding: 10px 16px;
+  background: var(--surface-head);
+  border-bottom: 1px solid var(--line);
 }
 
 .panel-title {
@@ -205,8 +230,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 56px;
   padding: 10px 16px;
-  background: var(--surface);
+  background: var(--surface-head);
   border-bottom: 1px solid var(--line);
 }
 
@@ -220,15 +246,16 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 18px 20px 30px;
+  padding: 16px 16px 28px;
 }
 
 .chat-head {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 56px;
   padding: 10px 16px;
-  background: var(--surface);
+  background: var(--surface-head);
   border-bottom: 1px solid var(--line);
 }
 
@@ -295,7 +322,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  padding: 18px 20px;
+  padding: 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -418,7 +445,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 13px 14px;
+  min-height: 56px;
+  padding: 10px 16px;
+  background: var(--surface-head);
   border-bottom: 1px solid var(--line);
 }
 
@@ -431,7 +460,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 14px 28px;
+  padding: 16px 16px 28px;
 }
 
 @media (max-width: 900px) {
@@ -441,25 +470,133 @@
 
   .rail {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: calc(58px + env(safe-area-inset-bottom));
+    left: 12px;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    height: 58px;
     flex-direction: row;
     justify-content: space-around;
     gap: 0;
-    padding: 0 0 env(safe-area-inset-bottom);
-    border-right: none;
-    border-top: 1px solid var(--line);
+    padding: 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    overflow: hidden;
+    touch-action: none;
     z-index: 30;
   }
 
-  .rail-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    font-size: 15px;
+  .rail-pill {
+    display: block;
+    position: absolute;
+    top: 12px;
+    left: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--green);
+    transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+  }
+
+  .rail-pill.is-dragging {
+    transition: none;
+  }
+
+  .rail-tab {
+    position: relative;
+    z-index: 1;
+    transition: color 180ms linear;
+  }
+
+  .rail-tab svg {
+    box-sizing: content-box;
+    width: 20px;
+    height: 20px;
+    padding: 7px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    transition: background-color 180ms linear, transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .rail-tab.is-active {
+    background: none;
+    color: var(--green-ink);
+  }
+
+  .rail-tab.is-active svg {
+    background: none;
+    transform: scale(1.06);
+  }
+
+  .rail-avatar.avatar {
     order: 9;
+    flex: 1;
+    max-width: 110px;
+    width: auto;
+    height: auto;
+    padding: 5px 0;
+    display: flex;
+    position: relative;
+    z-index: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  .rail-avatar .rail-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-width: 2px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    color: var(--green-ink);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .rail-avatar[data-skin="0"] .rail-face {
+    background: var(--green);
+    border-color: var(--green);
+    color: var(--on-green);
+  }
+
+  .rail-avatar .rail-face img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .rail-avatar .avatar-on {
+    right: -2px;
+    bottom: -1px;
+    width: 9px;
+    height: 9px;
+    border-width: 1.5px;
+  }
+
+  .rail-avatar .rail-label {
+    display: block;
+  }
+
+  .rail-avatar.avatar.is-active {
+    background: none;
+    color: var(--on-green);
+  }
+
+  .rail-avatar.is-active .rail-face {
+    border-color: var(--green);
   }
 
   .rail-sep {
@@ -471,9 +608,7 @@
   }
 
   .rail-tabs {
-    flex-direction: row;
-    justify-content: space-around;
-    gap: 0;
+    display: contents;
   }
 
   .rail-tab {
@@ -484,12 +619,12 @@
   }
 
   .panel-body {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
   }
 
   .chat {
     position: fixed;
-    inset: 0 0 calc(58px + env(safe-area-inset-bottom));
+    inset: 0 0 calc(78px + env(safe-area-inset-bottom));
     transform: translateX(100%);
     transition: transform 200ms ease-out;
     z-index: 25;
@@ -545,8 +680,15 @@
     height: 32px;
   }
 
-  #shot-btn {
-    display: none;
+  .composer .composer-more {
+    right: 10px;
+    gap: 4px;
+    padding: 8px;
+  }
+
+  .composer .composer-more-item {
+    padding: 8px 2px;
+    font-size: 10px;
   }
 
   .chat-empty {

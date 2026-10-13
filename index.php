@@ -42,6 +42,7 @@ $boot = [
     'awayReply' => PARLZ_AWAY_REPLY,
     'fileMax' => PARLZ_FILE_MAX_BYTES,
     'name' => PARLZ_NAME,
+    'stt' => stt_ready(),
     'build' => date('m-d H:i', parlz_build_time()),
     'turn' => PARLZ_TURN_HOST === '' ? null : [
         'host' => PARLZ_TURN_HOST,
@@ -95,11 +96,32 @@ $boot = [
       </label>
       <p class="form-error" id="login-error"></p>
       <button class="btn btn-primary btn-block" type="submit">进入 Parlz</button>
+      <p class="auth-link-row"><button class="auth-link" type="button" id="forgot-btn">忘记密码？</button></p>
       <div class="auth-scan is-hidden" id="auth-scan">
         <div class="auth-scan-qr" id="auth-scan-qr"></div>
         <p class="auth-scan-hint">用已登录 Parlz 的手机扫码，确认后自动登录</p>
         <p class="auth-scan-status" id="auth-scan-status">二维码加载中…</p>
       </div>
+    </form>
+    <form class="auth-form is-hidden" id="reset-form" autocomplete="on">
+      <label class="field">
+        <span class="field-label">注册邮箱</span>
+        <input class="input" name="email" type="email" maxlength="190" placeholder="你注册时用的邮箱">
+      </label>
+      <label class="field">
+        <span class="field-label">邮箱验证码</span>
+        <span class="field-code">
+          <input class="input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="邮件里的 6 位数字">
+          <button class="btn btn-sm" type="button" id="reset-code-btn">获取验证码</button>
+        </span>
+      </label>
+      <label class="field">
+        <span class="field-label">新密码</span>
+        <input class="input" name="password" type="password" autocomplete="new-password" placeholder="至少 6 位">
+      </label>
+      <p class="form-error" id="reset-error"></p>
+      <button class="btn btn-primary btn-block" type="submit">重置密码</button>
+      <p class="auth-link-row"><button class="auth-link" type="button" id="reset-back">返回登录</button></p>
     </form>
     <form class="auth-form is-hidden" id="register-form" autocomplete="on">
       <label class="field">
@@ -114,6 +136,17 @@ $boot = [
         <span class="field-label">密码</span>
         <input class="input" name="password" type="password" autocomplete="new-password" placeholder="至少 6 位">
       </label>
+      <label class="field">
+        <span class="field-label">邮箱</span>
+        <input class="input" name="email" type="email" autocomplete="email" maxlength="190" placeholder="用于接收注册验证码">
+      </label>
+      <label class="field">
+        <span class="field-label">邮箱验证码</span>
+        <span class="field-code">
+          <input class="input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="邮件里的 6 位数字">
+          <button class="btn btn-sm" type="button" id="email-code-btn">获取验证码</button>
+        </span>
+      </label>
       <p class="form-error" id="register-error"></p>
       <button class="btn btn-primary btn-block" type="submit">创建账号</button>
     </form>
@@ -122,6 +155,7 @@ $boot = [
 
 <div class="app is-hidden" id="app">
   <nav class="rail">
+    <span class="rail-pill" id="rail-pill" aria-hidden="true"></span>
     <button class="rail-avatar avatar" id="rail-avatar" type="button" title="我的资料"></button>
     <span class="rail-sep"></span>
     <div class="rail-tabs">
@@ -205,28 +239,28 @@ $boot = [
           <span class="upload-pct mono" id="upload-pct">0%</span>
         </div>
         <div class="composer-tools">
+          <button class="icon-btn" id="voice-btn" type="button" title="语音消息">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M6.5 12a5.5 5.5 0 0 0 11 0h2a7.5 7.5 0 0 1-6.5 7.4V21h-2v-1.6A7.5 7.5 0 0 1 4.5 12z"/></svg>
+          </button>
           <button class="icon-btn" id="emoji-btn" type="button" title="表情">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-3.5-9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm7 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM6.8 13h10.4c-.6 2.3-2.6 4-5.2 4s-4.6-1.7-5.2-4z"/></svg>
           </button>
-          <button class="icon-btn" id="mention-btn" type="button" title="提到成员">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.4 12v1.6a2.2 2.2 0 0 0 4.4 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-          </button>
-          <button class="icon-btn" id="image-btn" type="button" title="发送图片或文件">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.2 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <button class="icon-btn" id="shot-btn" type="button" title="截屏发送（Ctrl+Alt+A）">
+          <button class="icon-btn" id="shot-btn" type="button" title="截屏发送">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1.2 2H20v15H4V5h3.8zM12 8.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 2a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z"/></svg>
-          </button>
-          <button class="icon-btn" id="voice-btn" type="button" title="语音消息">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M6.5 12a5.5 5.5 0 0 0 11 0h2a7.5 7.5 0 0 1-6.5 7.4V21h-2v-1.6A7.5 7.5 0 0 1 4.5 12z"/></svg>
           </button>
         </div>
         <input type="file" id="image-input" class="is-hidden">
         <textarea class="composer-input" id="composer-input" rows="1" placeholder="输入消息，Enter 发送 / Shift+Enter 换行 / @ 提到成员 / 可直接粘贴图片"></textarea>
         <button type="button" class="voice-hold is-hidden" id="voice-hold">按住 说话</button>
+        <div class="composer-tools">
+          <button class="icon-btn" id="more-btn" type="button" title="更多功能" aria-label="更多功能">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v8h8v2h-8v8h-2v-8H3v-2h8z"/></svg>
+          </button>
+        </div>
         <button class="btn btn-primary composer-send" id="send-btn" type="button" title="发送" aria-label="发送">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M21.6 3.1L2.5 10.6c-.9.4-.9 1.6 0 1.9l4.7 1.7 1.7 4.8c.3.9 1.5 1 1.9.2l1.8-3.6 4.6 3.5c.7.5 1.7.1 1.9-.8l3-13.4c.2-.9-.6-1.6-1.5-1.3zM9 13.3l9.3-7.4-6.7 7.9-.4 3.4z"/></svg>
         </button>
+        <div class="composer-more is-hidden" id="composer-more"></div>
         <div class="sticker-panel is-hidden" id="sticker-panel"></div>
         <div class="mention-panel is-hidden" id="mention-panel"></div>
       </footer>

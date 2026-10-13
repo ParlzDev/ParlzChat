@@ -1,9 +1,9 @@
 import { state, emit } from './state.js';
-import { $, esc, avatarHtml, toast, throttle, armConfirm, fmtSize, uploadUrl } from './util.js';
+import { $, esc, avatarHtml, toast, throttle, armConfirm, fmtSize, uploadUrl, loadingHtml } from './util.js';
 import { apiGet, apiPost } from './api.js';
 import { parseFile, renderBody } from './richtext.js';
 import { icon } from './icons.js';
-import { qrSvg } from './qr.js';
+import { qrMount } from './qr.js';
 import * as chats from './chats.js';
 import * as contacts from './contacts.js';
 import * as messages from './messages.js';
@@ -87,7 +87,7 @@ async function searchUsers(query) {
     host.innerHTML = '<p class="empty-note">输入关键字开始搜索</p>';
     return;
   }
-  host.innerHTML = '<p class="empty-note">搜索中…</p>';
+  host.innerHTML = loadingHtml('搜索中');
   try {
     const res = await apiGet('api/friends.php', { q: query });
     if (res.results.length === 0) {
@@ -244,7 +244,7 @@ async function forwardToChats(chatIds) {
 }
 
 export async function openGroupInfo(chatId) {
-  open('群信息', '<p class="empty-note">加载中…</p>');
+  open('群信息', loadingHtml());
   try {
     const res = await apiGet('api/groups.php', { action: 'info', chat_id: chatId });
     renderGroupInfo(res.group);
@@ -296,6 +296,26 @@ function renderGroupInfo(group) {
       ? '<label class="field"><textarea class="input group-notice" id="group-notice" maxlength="200" rows="2" placeholder="给全群可见的公告，最多 200 字">' + esc(notice) + '</textarea></label>' +
         '<div class="form-actions drawer-actions"><button type="button" class="btn btn-sm btn-primary" data-act="act-notice" data-id="' + group.id + '">保存公告</button></div>'
       : '<p class="empty-note">' + (notice === '' ? '暂无公告' : esc(notice)) + '</p>');
+
+  const opt = (value, label, current) =>
+    '<option value="' + value + '"' + (current === value ? ' selected' : '') + '>' + label + '</option>';
+  const settingsHtml = group.is_manager
+    ? '<h3 class="section-title">群设置</h3>' +
+      '<label class="field"><span class="field-label">搜索方式</span>' +
+      '<select class="input" id="group-search-mode">' +
+        opt('private', '私密（别人搜不到）', group.search_mode) +
+        opt('uid', '仅通过群号搜索', group.search_mode) +
+        opt('keyword', '仅通过关键词搜索', group.search_mode) +
+        opt('both', '关键词或群号都可以', group.search_mode) +
+      '</select></label>' +
+      '<label class="field"><span class="field-label">加群方式</span>' +
+      '<select class="input" id="group-join-mode">' +
+        opt('none', '不允许任何人加入', group.join_mode) +
+        opt('verify', '需要验证身份（我来审批）', group.join_mode) +
+        opt('open', '任何人都可以加入', group.join_mode) +
+      '</select></label>' +
+      '<div class="form-actions drawer-actions"><button type="button" class="btn btn-sm btn-primary" data-act="act-group-settings" data-id="' + group.id + '">保存设置</button></div>'
+    : '';
 
   const nickHtml = '<h3 class="section-title">我的群名片</h3>' +
     '<div class="form-actions drawer-actions"><input class="input" id="group-nick" maxlength="16" value="' + esc(group.my_nick ?? '') + '" placeholder="在这个群里显示的名字（留空用昵称）">' +
@@ -353,6 +373,7 @@ function renderGroupInfo(group) {
     '<div class="profile-sub mono">' + esc(group.uid ?? '') + ' · ' + group.members.length + ' 人' + (group.is_default ? ' · 默认群' : '') + '</div>' +
     avatarHtmlBlock + '</div></div>' +
     noticeHtml +
+    settingsHtml +
     nickHtml +
     renameHtml +
     '<h3 class="section-title">群成员</h3>' + memberRows +
@@ -367,12 +388,9 @@ function renderGroupInfo(group) {
 
 function openGroupShare(group) {
   const url = window.location.origin + '/index.php?chat&uid=' + encodeURIComponent(group.uid ?? '');
-  const svg = qrSvg(url);
   open('分享群聊',
     '<div class="share-card">' +
-      (svg === ''
-        ? '<p class="empty-note">二维码组件加载失败，可直接复制下面的链接</p>'
-        : '<div class="share-qr">' + svg + '</div>') +
+      '<div class="share-qr" id="share-qr-host"></div>' +
       '<div class="share-name">' + esc(group.name) + '</div>' +
       '<div class="setting-row"><span class="setting-title">群 UID</span>' +
       '<span class="uid-row"><span class="uid mono">' + esc(group.uid ?? '') + '</span>' +
@@ -380,13 +398,14 @@ function openGroupShare(group) {
       '<div class="setting-row"><span class="setting-title">链接</span>' +
       '<span class="uid-row"><span class="share-url mono">' + esc(url) + '</span>' +
       '<button type="button" class="btn btn-sm" data-copy="' + esc(url) + '">复制</button></span></div>' +
-      '<p class="setting-desc">对方扫码或在浏览器打开链接即可进群</p>' +
+      '<p class="setting-desc">让对方用「扫一扫」扫这个码，或打开下面的链接进群</p>' +
       '<div class="form-actions"><button type="button" class="btn btn-sm" data-act="act-back-info">' + icon('back') + ' 返回群信息</button></div>' +
     '</div>');
+  qrMount($('#share-qr-host'), String(group.uid ?? ''), 340);
 }
 
 export async function openFavorites() {
-  open('我的收藏', '<p class="empty-note">加载中…</p>');
+  open('我的收藏', loadingHtml());
   try {
     const res = await apiGet('api/favorites.php');
     const list = res.favorites ?? [];
@@ -550,6 +569,20 @@ export async function init() {
           }
           await Promise.all([chats.refresh(), contacts.refresh()]);
           openGroupInfo(id);
+        })
+        .catch((error) => toast(error.message, true));
+    } else if (act === 'act-group-settings') {
+      const searchNode = $('#group-search-mode');
+      const joinNode = $('#group-join-mode');
+      apiPost('api/groups.php', {
+        action: 'settings',
+        chat_id: id,
+        search_mode: searchNode ? searchNode.value : 'both',
+        join_mode: joinNode ? joinNode.value : 'verify',
+      })
+        .then(async () => {
+          toast('群设置已保存');
+          await openGroupInfo(id);
         })
         .catch((error) => toast(error.message, true));
     } else if (act === 'act-notice') {

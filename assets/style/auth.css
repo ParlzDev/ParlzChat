@@ -106,8 +106,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 176px;
-  height: 176px;
+  width: 240px;
+  height: 240px;
   padding: 10px;
   background: #ffffff;
   border: 1px solid var(--line);
@@ -158,4 +158,22 @@
   .auth-scan {
     display: none;
   }
+}
+
+.auth-link-row {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.auth-link {
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--green-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
 }

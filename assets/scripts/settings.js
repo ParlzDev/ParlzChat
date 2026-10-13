@@ -208,6 +208,9 @@ function body() {
     '</div>' +
     '<div class="setting-block">' +
       '<h3 class="section-title">账号</h3>' +
+      '<div class="setting-row"><div><div class="setting-title">我的邮箱</div>' +
+      '<div class="setting-desc" id="my-email">' + esc((user.email ?? '') === '' ? '还没绑定邮箱' : String(user.email)) + '</div></div>' +
+      '<button type="button" class="btn btn-sm" id="open-email">' + (((user.email ?? '') === '') ? '绑定' : '修改') + '</button></div>' + +
       '<div class="setting-row"><span class="setting-title">我的 UID</span>' +
       '<span class="uid-row"><span class="uid mono">' + esc(user.uid ?? '') + '</span>' +
       '<button type="button" class="btn btn-sm" data-copy="' + esc(user.uid ?? '') + '">复制</button></span></div>' +
@@ -336,6 +339,39 @@ function wire() {
           await refreshProfile();
         })
         .catch((error) => toast(error.message, true));
+    });
+  }
+
+  const emailBtn = $('#open-email');
+  if (emailBtn !== null) {
+    emailBtn.addEventListener('click', () => {
+      import('./drawer.js').then(({ open }) => {
+        open('我的邮箱',
+          '<label class="field"><span class="field-label">新邮箱</span>' +
+          '<input class="input" id="new-email" type="email" maxlength="190" value="' + esc(state.user?.email ?? '') + '" placeholder="换成这个邮箱"></label>' +
+          '<label class="field"><span class="field-label">验证码</span>' +
+          '<span class="field-code"><input class="input" id="new-email-code" inputmode="numeric" maxlength="6" placeholder="发到新邮箱的 6 位数字">' +
+          '<button class="btn btn-sm" id="new-email-send" type="button">获取验证码</button></span></label>' +
+          '<div class="form-actions drawer-actions"><button class="btn btn-primary" id="new-email-save" type="button">保存</button></div>');
+        $('#new-email-send').addEventListener('click', () => {
+          const email = String($('#new-email').value ?? '').trim();
+          apiPost('api/email.php', { action: 'send', email, purpose: 'rebind' })
+            .then(() => toast('验证码已发到 ' + email))
+            .catch((error) => toast(error.message, true));
+        });
+        $('#new-email-save').addEventListener('click', async () => {
+          try {
+            const res = await apiPost('api/profile.php', { action: 'email', email: String($('#new-email').value ?? '').trim(), code: String($('#new-email-code').value ?? '').trim() });
+            if (state.user !== null && res.user !== null) {
+              state.user.email = res.user.email;
+            }
+            toast('邮箱已更新');
+            render();
+          } catch (error) {
+            toast(error.message, true);
+          }
+        });
+      });
     });
   }
 

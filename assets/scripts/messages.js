@@ -1,7 +1,8 @@
 import { state, chatById, on, emit } from './state.js';
-import { $, esc, avatarHtml, fmtMsgTime, uploadUrl, uidUserId, toast, fmtSize, downloadFile } from './util.js';
+import { $, esc, avatarHtml, fmtMsgTime, uploadUrl, uidUserId, toast, fmtSize, downloadFile, loadingHtml } from './util.js';
 import { apiGet, apiPost } from './api.js';
 import { stickerSvg } from './stickers.js';
+import { levelChips } from './level.js';
 import { renderBody, firstUrl, parseQuote, quotePreview, parseFile, mediaKind } from './richtext.js';
 import { parseRecord, openRecordFromBody } from './record.js';
 import { mediaUpgrade } from './media.js';
@@ -9,6 +10,8 @@ import { icon } from './icons.js';
 import * as chats from './chats.js';
 
 const TIME_GAP_SECONDS = 300;
+const voiceTexts = new Map();
+const sttPending = new Set();
 
 function nearBottom(host) {
   return host.scrollHeight - host.scrollTop - host.clientHeight < 120;
@@ -93,7 +96,62 @@ function voiceBubble(message, myNick) {
   }
   const dur = Math.max(1, Math.min(600, Number(data.dur) || Math.max(1, Math.round(data.size / 2000))));
   return '<div class="mplayer" data-media="voice" data-src="' + esc(uploadUrl(data.file)) + '"' +
-    ' data-file="' + esc(data.file) + '" data-name="' + esc(data.name) + '" data-dur="' + dur + '"></div>';
+    ' data-file="' + esc(data.file) + '" data-name="' + esc(data.name) + '" data-dur="' + dur + '"></div>' +
+    voiceTextNode(message.id);
+}
+
+function voiceTextNode(messageId) {
+  const text = voiceTexts.get(messageId);
+  if (text === undefined) {
+    return '';
+  }
+  return '<p class="voice-text">' + esc(text === '' ? '（没听清）' : text) + '</p>';
+}
+
+function voiceTextHost(messageId) {
+  const row = document.querySelector('[data-msg="' + messageId + '"]');
+  return row === null ? null : row.querySelector('.msg-main');
+}
+
+export async function transcribe(message) {
+  if (!message || message.kind !== 'voice') {
+    return;
+  }
+  if (voiceTexts.has(message.id) || sttPending.has(message.id)) {
+    return;
+  }
+  sttPending.add(message.id);
+  const host = voiceTextHost(message.id);
+  if (host !== null) {
+    const mark = document.createElement('div');
+    mark.className = 'voice-text is-pending';
+    mark.innerHTML = loadingHtml('转换中', true);
+    host.appendChild(mark);
+  }
+  try {
+    const res = await apiPost('api/stt.php', { message_id: message.id });
+    const text = String(res.text ?? '').trim();
+    voiceTexts.set(message.id, text);
+    const live = voiceTextHost(message.id);
+    if (live !== null) {
+      const node = live.querySelector('.voice-text');
+      if (node === null) {
+        live.insertAdjacentHTML('beforeend', voiceTextNode(message.id));
+      } else {
+        node.classList.remove('is-pending');
+        node.textContent = text === '' ? '（没听清）' : text;
+      }
+    }
+  } catch (error) {
+    const live = voiceTextHost(message.id);
+    const node = live === null ? null : live.querySelector('.voice-text.is-pending');
+    if (node !== null) {
+      node.remove();
+    }
+    toast(error.message, true);
+  } finally {
+    sttPending.delete(message.id);
+  }
 }
 
 function fileBubble(message, myNick) {
@@ -207,7 +265,7 @@ function messageNode(message) {
 
   const showName = !mine && chat !== null && chat.type === 'group';
   const avatar = avatarHtml(message.author, 'avatar-sm', false, true);
-  const name = showName ? '<span class="msg-name">' + esc(message.author.nickname) + '</span>' : '';
+  const name = showName ? '<span class="msg-name">' + esc(message.author.nickname) + levelChips(message.author.level) + '</span>' : '';
   const myNick = chat !== null && chat.my_nick ? String(chat.my_nick) : (state.user ? state.user.nickname : '');
   const content = message.kind === 'image'
     ? '<div class="image-bubble"><img src="' + esc(uploadUrl(message.body)) + '" alt="图片" loading="lazy"></div>'
@@ -234,6 +292,13 @@ function messageNode(message) {
   return row;
 }
 
+export function showLoading(label = '加载中') {
+  const host = $('#chat-body');
+  if (host !== null) {
+    host.innerHTML = loadingHtml(label);
+  }
+}
+
 function timeSepNode(ts) {
   const node = document.createElement('div');
   node.className = 'time-sep';
@@ -244,7 +309,7 @@ function timeSepNode(ts) {
 function loadMoreNode() {
   const node = document.createElement('div');
   node.className = 'load-more-hint';
-  node.textContent = '加载中…';
+  node.innerHTML = loadingHtml('加载中', true);
   return node;
 }
 

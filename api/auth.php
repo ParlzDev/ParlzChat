@@ -14,7 +14,7 @@ $action = (string)($data['action'] ?? '');
 
 if ($action === 'scan-create') {
     db()->exec('DELETE FROM login_codes WHERE created_at < ' . (time() - 600));
-    $code = bin2hex(random_bytes(12));
+    $code = bin2hex(random_bytes(6));
     db()->prepare('INSERT INTO login_codes (code, user_id, status, created_at) VALUES (?, NULL, \'pending\', ?)')->execute([$code, time()]);
     json_out(['ok' => true, 'code' => $code]);
 }
@@ -91,6 +91,22 @@ if ($action === 'register') {
         fail('密码不能超过 72 个字符');
     }
 
+    rate_guard('register_code', rate_scope(), 20, 3600);
+    $email = email_normalize((string)($data['email'] ?? ''));
+    if ($email === '') {
+        fail('请填写正确的邮箱地址');
+    }
+    $code = (string)preg_replace('/\D/', '', (string)($data['code'] ?? ''));
+    if (strlen($code) !== 6) {
+        fail('请填写邮件里的 6 位验证码');
+    }
+    if (email_taken($email)) {
+        fail('这个邮箱已经注册过了', 409);
+    }
+    if (!email_code_check($email, $code)) {
+        fail('验证码不正确或已过期，请重新获取');
+    }
+
     $pdo = db();
     $stmt = $pdo->prepare('SELECT 1 FROM users WHERE username = ?');
     $stmt->execute([$username]);
@@ -99,18 +115,47 @@ if ($action === 'register') {
     }
 
     try {
-        $stmt = $pdo->prepare('INSERT INTO users (username, nickname, bio, avatar, pass_hash, created_at) VALUES (?, ?, \'\', \'\', ?, ?)');
-        $stmt->execute([$username, $nickname, password_hash($password, PASSWORD_DEFAULT), time()]);
+        $stmt = $pdo->prepare('INSERT INTO users (username, nickname, bio, avatar, pass_hash, email, created_at) VALUES (?, ?, \'\', \'\', ?, ?, ?)');
+        $stmt->execute([$username, $nickname, password_hash($password, PASSWORD_DEFAULT), $email, time()]);
     } catch (PDOException) {
         fail('用户名已被占用', 409);
     }
 
     $uid = (int)$pdo->lastInsertId();
-    join_chat(lobby_chat_id(), $uid);
     presence_touch($uid, 0, false);
     $_SESSION['uid'] = $uid;
     $_SESSION['device'] = device_register($uid);
     json_out(['ok' => true, 'user' => current_user()]);
+}
+
+if ($action === 'reset') {
+    rate_guard('reset', rate_scope(), 10, 3600);
+    $email = email_normalize((string)($data['email'] ?? ''));
+    $code = (string)preg_replace('/\D/', '', (string)($data['code'] ?? ''));
+    $password = (string)($data['password'] ?? '');
+    if ($email === '') {
+        fail('请填写邮箱');
+    }
+    if (strlen($code) !== 6) {
+        fail('请填写邮件里的 6 位验证码');
+    }
+    if (mb_strlen($password) < 6 || mb_strlen($password) > 72) {
+        fail('新密码要 6-72 个字符');
+    }
+    $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+    $stmt->execute([$email]);
+    $uid = (int)$stmt->fetchColumn();
+    if ($uid <= 0) {
+        fail('这个邮箱还没注册过 Parlz');
+    }
+    if (!email_code_check($email, $code, 'reset')) {
+        fail('验证码不正确或已过期，请重新获取');
+    }
+    db_write(static function () use ($uid, $password): void {
+        db()->prepare('UPDATE users SET pass_hash = ? WHERE id = ?')->execute([password_hash($password, PASSWORD_DEFAULT), $uid]);
+        db()->prepare('DELETE FROM devices WHERE user_id = ?')->execute([$uid]);
+    });
+    json_out(['ok' => true]);
 }
 
 if ($action === 'login') {

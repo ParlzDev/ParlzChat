@@ -1,5 +1,5 @@
 import { state, on, totalUnread } from './state.js';
-import { $, esc, initials, skinFor, avatarUrl, toast, copyText, copyImage, uidName, uidUserId } from './util.js';
+import { $, esc, initials, skinFor, avatarUrl, toast, copyText, copyImage, uidName, uidUserId, slideIn } from './util.js';
 import { apiPost } from './api.js';
 import { icon } from './icons.js';
 import * as router from './router.js';
@@ -28,9 +28,11 @@ function renderRailAvatar() {
   const user = state.user ?? {};
   const name = user.nickname ?? '我';
   node.dataset.skin = String(skinFor(user.id));
-  node.innerHTML = (user.avatar
+  const face = user.avatar
     ? '<img src="' + avatarUrl(user.avatar) + '" alt="">'
-    : '<span>' + esc(initials(name)) + '</span>') + '<span class="avatar-on"></span>';
+    : '<span>' + esc(initials(name)) + '</span>';
+  node.innerHTML = '<span class="rail-face">' + face + '<span class="avatar-on"></span></span>' +
+    '<span class="rail-label">我</span>';
   node.title = name + ' 的资料';
 }
 
@@ -44,11 +46,67 @@ function refreshBadges() {
   requestBadge.textContent = String(state.requests.length);
 }
 
+function railItems() {
+  return Array.from(document.querySelectorAll('.rail .rail-tab, .rail .rail-avatar'));
+}
+
+function moveRailPill(animate = true) {
+  const rail = document.querySelector('.rail');
+  const pill = $('#rail-pill');
+  if (rail === null || pill === null) {
+    return;
+  }
+  const active = rail.querySelector('.rail-tab.is-active') ?? rail.querySelector('.rail-avatar.is-active');
+  if (active === null) {
+    pill.classList.add('is-hidden');
+    return;
+  }
+  const railBox = rail.getBoundingClientRect();
+  const box = active.getBoundingClientRect();
+  const size = 34;
+  pill.classList.remove('is-hidden');
+  pill.classList.toggle('is-dragging', !animate);
+  pill.style.transform = 'translateX(' + Math.round(box.left - railBox.left + box.width / 2 - size / 2) + 'px)';
+}
+
+function railPillFollow(clientX) {
+  const rail = document.querySelector('.rail');
+  const pill = $('#rail-pill');
+  if (rail === null || pill === null) {
+    return;
+  }
+  const railBox = rail.getBoundingClientRect();
+  const size = 34;
+  const left = Math.min(Math.max(clientX - railBox.left - size / 2, 6), railBox.width - size - 6);
+  pill.classList.add('is-dragging');
+  pill.style.transform = 'translateX(' + Math.round(left) + 'px)';
+}
+
+function railItemAt(clientX, clientY) {
+  const items = railItems();
+  let best = null;
+  let bestGap = Infinity;
+  items.forEach((item) => {
+    const box = item.getBoundingClientRect();
+    const gap = Math.abs(clientX - (box.left + box.width / 2));
+    if (box.height > 0 && gap < bestGap) {
+      best = item;
+      bestGap = gap;
+    }
+  });
+  if (best === null) {
+    return null;
+  }
+  const box = best.getBoundingClientRect();
+  return clientY >= box.top - 12 && clientY <= box.bottom + 12 ? best : null;
+}
+
 function railActive(rail) {
   document.querySelectorAll('.rail-tab').forEach((tab) => {
     tab.classList.toggle('is-active', tab.dataset.view === rail);
   });
   $('#rail-avatar').classList.toggle('is-active', rail === 'profile');
+  moveRailPill();
 }
 
 function showPanel(target) {
@@ -60,8 +118,7 @@ function showPanel(target) {
   $('#panel-title').textContent = PANEL_TITLES[listView];
   $('#panel-search-wrap').classList.remove('is-hidden');
   $('#panel-search').placeholder = PANEL_PLACEHOLDERS[listView];
-  $('#panel-actions').innerHTML = '<button type="button" class="icon-btn" id="panel-add" title="' +
-    (listView === 'chats' ? '发起会话' : '添加好友') + '">' + icon('plus') + '</button>';
+  $('#panel-actions').innerHTML = '<button type="button" class="icon-btn" id="panel-add" title="更多">' + icon('plus') + '</button>';
   if (listView === 'chats') {
     chats.render();
   } else {
@@ -118,7 +175,22 @@ async function flushPendingUid(force) {
   await openByUid(uid);
 }
 
+function slideRoute() {
+  const host = state.route === 'contact' || state.route === 'chat'
+    ? (state.route === 'chat' ? $('#chat') : $('#panel-body'))
+    : $('#page-view');
+  if (host === null || host.classList.contains('is-hidden')) {
+    return;
+  }
+  slideIn(host);
+}
+
 export function applyRoute(route) {
+  paintRoute(route);
+  slideRoute();
+}
+
+function paintRoute(route) {
   const name = route.name;
   state.route = name;
   if (name !== 'chat') {
@@ -252,6 +324,7 @@ export async function startSession(user, route) {
     .then(() => contacts.refreshGroups())
     .catch(() => {});
   poller.start();
+  window.requestAnimationFrame(() => moveRailPill(false));
 }
 
 function wireNativeGesture() {
@@ -293,6 +366,32 @@ function wireNativeGesture() {
   }, { passive: true });
 }
 
+function closeAddMenu() {
+  const node = $('#panel-add-menu');
+  if (node !== null) {
+    node.remove();
+  }
+}
+
+function openAddMenu(anchor) {
+  closeAddMenu();
+  const node = document.createElement('div');
+  node.className = 'ctx-menu add-menu';
+  node.id = 'panel-add-menu';
+  const contactsView = state.view === 'contacts';
+  node.innerHTML = contactsView
+    ? '<button type="button" class="ctx-item" data-add="mycode">' + icon('qr') + '<span>我的二维码</span></button>' +
+      '<button type="button" class="ctx-item" data-add="scan">' + icon('scan') + '<span>扫码加好友</span></button>' +
+      '<button type="button" class="ctx-item" data-add="face">' + icon('hand') + '<span>面对面加好友</span></button>'
+    : '<button type="button" class="ctx-item" data-add="scan">' + icon('scan') + '<span>扫一扫</span></button>' +
+      '<button type="button" class="ctx-item" data-add="group">' + icon('users') + '<span>创建群聊</span></button>';
+  document.body.appendChild(node);
+  const box = anchor.getBoundingClientRect();
+  const rect = node.getBoundingClientRect();
+  node.style.top = Math.round(box.bottom + 6) + 'px';
+  node.style.left = Math.round(Math.max(8, Math.min(box.right - rect.width, window.innerWidth - rect.width - 8))) + 'px';
+}
+
 function wire() {
   wireNativeGesture();
 
@@ -302,18 +401,94 @@ function wire() {
 
   $('#rail-avatar').addEventListener('click', () => navigate('profile', 0));
 
+  const rail = document.querySelector('.rail');
+  let railDrag = null;
+
+  rail.addEventListener('pointerdown', (event) => {
+    if (!window.matchMedia('(max-width: 900px)').matches || (event.pointerType === 'mouse' && event.button !== 0)) {
+      return;
+    }
+    railDrag = { id: event.pointerId, startX: event.clientX, moved: false };
+  });
+
+  rail.addEventListener('pointermove', (event) => {
+    if (railDrag === null || event.pointerId !== railDrag.id) {
+      return;
+    }
+    if (!railDrag.moved && Math.abs(event.clientX - railDrag.startX) < 6) {
+      return;
+    }
+    railDrag.moved = true;
+    railPillFollow(event.clientX);
+  });
+
+  const endRailDrag = (event) => {
+    if (railDrag === null || event.pointerId !== railDrag.id) {
+      return;
+    }
+    const moved = railDrag.moved;
+    railDrag = null;
+    if (!moved) {
+      moveRailPill();
+      return;
+    }
+    const item = railItemAt(event.clientX, event.clientY);
+    if (item === null) {
+      moveRailPill();
+      return;
+    }
+    if (item.classList.contains('rail-avatar')) {
+      navigate('profile', 0);
+      return;
+    }
+    navigate(item.dataset.view ?? 'chat', 0);
+  };
+
+  rail.addEventListener('pointerup', endRailDrag);
+  rail.addEventListener('pointercancel', endRailDrag);
+
+  window.addEventListener('resize', () => moveRailPill(false));
+  window.addEventListener('orientationchange', () => window.setTimeout(() => moveRailPill(false), 120));
+
   $('#logout-btn').addEventListener('click', () => auth.logout());
 
   $('#panel-actions').addEventListener('click', (event) => {
-    if (event.target.closest('#panel-add') === null) {
+    const addButton = event.target.closest('#panel-add');
+    if (addButton === null) {
       return;
     }
-    if (state.view === 'contacts') {
-      drawer.openAddFriend();
+    if ($('#panel-add-menu') === null) {
+      openAddMenu(addButton);
     } else {
-      drawer.openNewChat();
+      closeAddMenu();
     }
   });
+
+  document.addEventListener('click', (event) => {
+    const addItem = event.target.closest('[data-add]');
+    if (addItem !== null) {
+      closeAddMenu();
+      const add = addItem.dataset.add;
+      if (add === 'scan') {
+        import('./scanner.js').then(({ openScanner }) => openScanner()).catch(() => {});
+        return;
+      }
+      if (add === 'mycode') {
+        contacts.openMyCode();
+        return;
+      }
+      if (add === 'face') {
+        contacts.openFaceAdd();
+        return;
+      }
+      drawer.openGroupForm();
+      return;
+    }
+    if (event.target.closest('#panel-add') === null && event.target.closest('#panel-add-menu') === null) {
+      closeAddMenu();
+    }
+  });
+  window.addEventListener('scroll', closeAddMenu, { capture: true, passive: true });
 
   document.addEventListener('click', (event) => {
     if (event.target.closest('#lightbox-copy') !== null) {
@@ -356,6 +531,7 @@ function wire() {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeLightbox();
+      closeAddMenu();
     }
   });
 

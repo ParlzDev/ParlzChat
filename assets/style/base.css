@@ -14,6 +14,7 @@
   color-scheme: light;
   --bg: #eefcf4;
   --surface: #ffffff;
+  --surface-head: #f4fdf8;
   --surface-2: #e4fbec;
   --surface-3: #d2f7e1;
   --line: #cdeedd;
@@ -36,6 +37,7 @@
   color-scheme: dark;
   --bg: #101a15;
   --surface: #16241c;
+  --surface-head: #121e18;
   --surface-2: #1c3125;
   --surface-3: #233d2c;
   --line: #274634;
@@ -72,12 +74,27 @@ body {
   height: 100%;
 }
 
+html {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
   font: 14px/1.6 var(--font-ui);
   -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color 160ms linear, color 160ms linear;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 ::-webkit-scrollbar {
@@ -157,6 +174,62 @@ svg {
   color: var(--text-dim);
   font-size: 13px;
   text-align: center;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px;
+  padding: 18px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.loading.is-tight {
+  justify-content: flex-start;
+  margin: 8px 0;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.loading-ring {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: parlz-spin 700ms linear infinite;
+}
+
+.loading.is-tight .loading-ring {
+  width: 13px;
+  height: 13px;
+  border-width: 2px;
+}
+
+@keyframes parlz-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.is-entering {
+  animation: pane-in 140ms linear;
+}
+
+@keyframes pane-in {
+  from {
+    transform: translateY(7px);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .btn {
@@ -280,6 +353,22 @@ textarea.input {
   letter-spacing: 0.06em;
 }
 
+.field-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-code .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-code .btn {
+  flex: none;
+  white-space: nowrap;
+}
+
 .form-error {
   min-height: 20px;
   margin-bottom: 6px;
@@ -305,7 +394,7 @@ textarea.input {
   height: 44px;
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
+  border-radius: 50%;
   color: var(--green-ink);
   font-size: 16px;
   font-weight: 700;
@@ -356,8 +445,8 @@ textarea.input {
 
 .avatar-on {
   position: absolute;
-  right: -4px;
-  bottom: -4px;
+  right: -1px;
+  bottom: -1px;
   width: 16px;
   height: 16px;
   background: var(--green);
@@ -376,14 +465,14 @@ textarea.input {
 .avatar-lg {
   width: 78px;
   height: 78px;
-  border-radius: 18px;
+  border-radius: 50%;
   font-size: 26px;
 }
 
 .avatar-sm {
   width: 36px;
   height: 36px;
-  border-radius: 9px;
+  border-radius: 50%;
   font-size: 14px;
 }
 

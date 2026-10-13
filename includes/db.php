@@ -35,8 +35,15 @@ function db(): PDO
     $pdo->exec('PRAGMA synchronous = NORMAL');
 
     $stamp = (string)@md5_file(__DIR__ . '/db.php');
-    $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts')")->fetchColumn();
-    if ($tables < 2 || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
+    $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts', 'stt_texts', 'email_codes')")->fetchColumn();
+    $emailColumn = false;
+    foreach (@$pdo->query('PRAGMA table_info(users)') ?: [] as $column) {
+        if ((string)$column['name'] === 'email') {
+            $emailColumn = true;
+            break;
+        }
+    }
+    if ($tables < 4 || !$emailColumn || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
         migrate($pdo);
         @file_put_contents(PARLZ_DATA . '/schema.stamp', $stamp);
     }
@@ -225,6 +232,48 @@ function migrate(PDO $pdo): void
         hits INTEGER NOT NULL DEFAULT 0
     )');
 
+    $pdo->exec('CREATE TABLE IF NOT EXISTS stt_texts (
+        key TEXT PRIMARY KEY,
+        text TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS email_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL,
+        purpose TEXT NOT NULL DEFAULT \'register\',
+        tries INTEGER NOT NULL DEFAULT 0,
+        used INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+    )');
+
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_email_codes ON email_codes (email, created_at)');
+
+    $chatColumns = [];
+    foreach ($pdo->query('PRAGMA table_info(chats)') as $column) {
+        $chatColumns[] = (string)$column['name'];
+    }
+    if (!in_array('search_mode', $chatColumns, true)) {
+        $pdo->exec("ALTER TABLE chats ADD COLUMN search_mode TEXT NOT NULL DEFAULT 'both'");
+    }
+    if (!in_array('join_mode', $chatColumns, true)) {
+        $pdo->exec("ALTER TABLE chats ADD COLUMN join_mode TEXT NOT NULL DEFAULT 'verify'");
+    }
+
+    $userColumns = [];
+    foreach ($pdo->query('PRAGMA table_info(users)') as $column) {
+        $userColumns[] = (string)$column['name'];
+    }
+    if (!in_array('email', $userColumns, true)) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN email TEXT');
+    }
+    if (!in_array('is_admin', $userColumns, true)) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
+        $pdo->exec('UPDATE users SET is_admin = 1 WHERE id = (SELECT MIN(id) FROM users)');
+    }
+
     try {
         $pdo->exec('DROP TABLE IF EXISTS messages_fts');
         try {
@@ -272,11 +321,41 @@ function migrate(PDO $pdo): void
         fetched_at INTEGER NOT NULL
     )');
 
-    $lobby = (int)$pdo->query('SELECT id FROM chats WHERE is_default = 1 LIMIT 1')->fetchColumn();
-    if ($lobby === 0) {
-        $pdo->prepare('INSERT INTO chats (type, name, dm_key, owner_id, is_default, created_at) VALUES (\'group\', ?, NULL, NULL, 1, ?)')
-            ->execute([PARLZ_LOBBY, time()]);
-    }
+    $pdo->exec('CREATE TABLE IF NOT EXISTS user_days (
+        user_id INTEGER NOT NULL,
+        day TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day)
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS mini_apps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL DEFAULT \'\',
+        brief TEXT NOT NULL DEFAULT \'\',
+        status TEXT NOT NULL DEFAULT \'draft\',
+        review_note TEXT NOT NULL DEFAULT \'\',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS mini_files (
+        app_id INTEGER NOT NULL,
+        ext TEXT NOT NULL,
+        body TEXT NOT NULL,
+        PRIMARY KEY (app_id, ext)
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS face_codes (
+        code TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        joined_by INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+    )');
+
+    $pdo->exec('DELETE FROM face_codes WHERE created_at < ' . (time() - 3600));
+    $pdo->exec('DELETE FROM chats WHERE is_default = 1');
 
     backfill_merged_avatars($pdo);
 }
@@ -361,13 +440,31 @@ function ensure_upload_dir(): void
     }
 }
 
-function lobby_chat_id(): int
+function user_day_bump(int $userId): void
 {
-    $id = (int)db()->query('SELECT id FROM chats WHERE is_default = 1 LIMIT 1')->fetchColumn();
-    if ($id === 0) {
-        throw new RuntimeException('默认群聊缺失，请删除 data/parlz.sqlite 后重试');
+    db_write(static function () use ($userId): void {
+        db()->prepare('INSERT INTO user_days (user_id, day, count) VALUES (?, ?, 1)
+            ON CONFLICT(user_id, day) DO UPDATE SET count = count + 1')
+            ->execute([$userId, gmdate('Y-m-d')]);
+    });
+}
+
+function level_of(int $userId): int
+{
+    static $cache = [];
+    if (isset($cache[$userId])) {
+        return $cache[$userId];
     }
-    return $id;
+    if ($userId <= 0) {
+        return 0;
+    }
+    $stmt = db()->prepare('SELECT SUM(MIN(count, 5)) / 5.0 FROM user_days WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $days = (float)$stmt->fetchColumn();
+    $level = (int)floor(sqrt($days + 4) - 2);
+    $level = $level < 1 ? 1 : $level;
+    $cache[$userId] = $level;
+    return $level;
 }
 
 function join_chat(int $chatId, int $userId): void

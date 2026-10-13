@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { $, esc, avatarHtml, toast, paintPage, uploadUrl, fmtMsgTime, armConfirm } from './util.js';
+import { $, esc, avatarHtml, toast, paintPage, uploadUrl, fmtMsgTime, armConfirm, loadingHtml } from './util.js';
 import { apiGet, apiPost } from './api.js';
 import { icon } from './icons.js';
 
@@ -318,7 +318,7 @@ export function render() {
       '</div>' +
       '<input type="file" id="moment-input" class="is-hidden" accept="image/png,image/jpeg,image/gif,image/webp" multiple>' +
     '</section>' +
-    '<div class="moment-feed" id="moment-feed"><p class="empty-note">动态加载中…</p></div>');
+    '<div class="moment-feed" id="moment-feed">loadingHtml()</div>');
   if (picked.length > 0) {
     clearPicks();
   }

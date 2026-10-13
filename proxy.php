@@ -27,6 +27,26 @@ function proxy_fail(string $message, int $status = 400): never
     exit;
 }
 
+function proxy_challenge(string $body, int $code): bool
+{
+    if ($code !== 403 && $code !== 429 && $code !== 503) {
+        return false;
+    }
+    $needles = [
+        'cf-challenge', 'challenge-platform', 'challenge-form', '__cf_chl', 'cf_chl_opt',
+        'turnstile', 'geetest', 'recaptcha', 'hcaptcha', 'captcha', 'verify you are human',
+        'checking your browser', 'just a moment', 'enable javascript and cookies',
+        '人机验证', '安全验证', '滑动验证', '验证码', '请输入验证',
+    ];
+    $lower = strtolower($body);
+    foreach ($needles as $needle) {
+        if (strpos($lower, strtolower($needle)) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function proxy_public_host(string $host): bool
 {
     $ips = @gethostbynamel($host);
@@ -198,6 +218,12 @@ if (stripos($type, 'text/html') === false) {
     exit;
 }
 
+$isChallenge = proxy_challenge($body, $code);
+if ($isChallenge) {
+    proxy_fail('这个网站要人机验证，站内代理过不去。请稍后再试，或换一个来源。', 200);
+}
+
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
+header('Content-Security-Policy: sandbox allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation');
 echo proxy_rewrite($body, $finalBase);

@@ -333,6 +333,14 @@ function user_uid(int $id): string
     return 'U' . str_pad((string)$id, 5, '0', STR_PAD_LEFT);
 }
 
+function group_id_from_uid(string $uid): int
+{
+    if (preg_match('/^[AG]?0*(\d{1,12})$/', strtoupper(trim($uid)), $m) === 1) {
+        return (int)$m[1];
+    }
+    return 0;
+}
+
 function group_uid(int $id): string
 {
     return 'A' . str_pad((string)$id, 5, '0', STR_PAD_LEFT);
@@ -384,6 +392,7 @@ function message_payload(array $row): array
             'nickname' => $row['nickname'],
             'username' => $row['username'],
             'avatar' => $row['avatar'],
+            'level' => level_of((int)$row['user_id']),
         ],
     ];
 }
@@ -421,6 +430,9 @@ function messages_after(int $chatId, int $after, int $limit = 200): array
 
 function push_message(int $chatId, int $userId, string $body, string $kind = 'text'): array
 {
+    if ($kind !== 'system' && $kind !== 'call' && $kind !== 'poke') {
+        user_day_bump($userId);
+    }
     $pdo = db();
     $stmt = $pdo->prepare('INSERT INTO messages (chat_id, user_id, body, kind, created_at) VALUES (?, ?, ?, ?, ?)');
     $stmt->execute([$chatId, $userId, $body, $kind, time()]);

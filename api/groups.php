@@ -81,6 +81,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
                 'notice' => (string)($chat['notice'] ?? ''),
                 'owner_id' => (int)$chat['owner_id'],
                 'is_default' => (bool)$chat['is_default'],
+                'search_mode' => (string)($chat['search_mode'] ?? 'both'),
+                'join_mode' => (string)($chat['join_mode'] ?? 'verify'),
                 'is_owner' => (int)$chat['owner_id'] === $uid,
                 'is_manager' => $manager,
                 'my_role' => $state === null ? 'member' : $state['role'],
@@ -119,6 +121,94 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 require_post();
 $data = request_data();
 $action = (string)($data['action'] ?? '');
+
+if ($action === 'settings') {
+    $chatId = int_field($data, 'chat_id', '群聊');
+    $chat = member_chat($chatId, $uid);
+    if ($chat['type'] !== 'group') {
+        fail('这不是群聊', 400);
+    }
+    if (!is_chat_manager($chat, $uid)) {
+        fail('只有群主和管理员能改这些设置', 403);
+    }
+    $searchMode = (string)($data['search_mode'] ?? '');
+    $joinMode = (string)($data['join_mode'] ?? '');
+    if (!in_array($searchMode, ['private', 'uid', 'keyword', 'both'], true)) {
+        fail('搜索方式不对');
+    }
+    if (!in_array($joinMode, ['none', 'verify', 'open'], true)) {
+        fail('加群方式不对');
+    }
+    db_write(static function () use ($pdo, $chatId, $searchMode, $joinMode): void {
+        $pdo->prepare('UPDATE chats SET search_mode = ?, join_mode = ? WHERE id = ?')->execute([$searchMode, $joinMode, $chatId]);
+    });
+    json_out(['ok' => true, 'search_mode' => $searchMode, 'join_mode' => $joinMode]);
+}
+
+if ($action === 'search') {
+    rate_guard('group_search', (string)$uid, 60, 600);
+    $query = trim((string)($data['q'] ?? ''));
+    if (mb_strlen($query) < 2) {
+        json_out(['ok' => true, 'groups' => []]);
+    }
+    $like = '%' . $query . '%';
+    $uidQuery = strtoupper($query);
+    $stmt = $pdo->prepare('SELECT c.id, c.name, c.avatar, c.search_mode, c.join_mode, c.owner_id,
+            (SELECT COUNT(*) FROM chat_members x WHERE x.chat_id = c.id) AS members,
+            (SELECT COUNT(*) FROM chat_members y WHERE y.chat_id = c.id AND y.user_id = ?) AS joined,
+            (SELECT COUNT(*) FROM group_invites gi WHERE gi.chat_id = c.id AND gi.invitee_id = ? AND gi.status = \'pending\') AS pending
+        FROM chats c
+        WHERE c.type = \'group\' AND c.is_default = 0
+          AND (
+            (c.search_mode IN (\'keyword\', \'both\') AND c.name LIKE ?)
+            OR (c.search_mode IN (\'uid\', \'both\') AND c.id = ?)
+          )
+        ORDER BY c.id DESC LIMIT 20');
+    $stmt->execute([$uid, $uid, $like, group_id_from_uid($uidQuery)]);
+    $groups = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $groups[] = [
+            'id' => (int)$row['id'],
+            'uid' => group_uid((int)$row['id']),
+            'name' => $row['name'],
+            'avatar' => (string)$row['avatar'],
+            'members' => (int)$row['members'],
+            'joined' => (int)$row['joined'] > 0,
+            'pending' => (int)$row['pending'] > 0,
+            'join_mode' => (string)$row['join_mode'],
+        ];
+    }
+    json_out(['ok' => true, 'groups' => $groups]);
+}
+
+if ($action === 'join') {
+    rate_guard('group_join', (string)$uid, 30, 600);
+    $chatId = int_field($data, 'chat_id', '群聊');
+    $stmt = $pdo->prepare('SELECT id, type, name, is_default, join_mode FROM chats WHERE id = ?');
+    $stmt->execute([$chatId]);
+    $chat = $stmt->fetch();
+    if ($chat === false || (string)$chat['type'] !== 'group') {
+        fail('群不存在', 404);
+    }
+    $stmt = $pdo->prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?');
+    $stmt->execute([$chatId, $uid]);
+    if ($stmt->fetchColumn() !== false) {
+        json_out(['ok' => true, 'joined' => true, 'chat_id' => $chatId]);
+    }
+    $joinMode = (string)($chat['join_mode'] ?? 'verify');
+    if ($joinMode === 'none') {
+        fail('这个群不允许加入');
+    }
+    if ($joinMode === 'open') {
+        $joined = join_chat($chatId, $uid);
+        json_out(['ok' => true, 'joined' => true, 'chat_id' => $joined]);
+    }
+    db_write(static function () use ($pdo, $chatId, $uid): void {
+        $pdo->prepare('INSERT OR IGNORE INTO group_invites (chat_id, inviter_id, invitee_id, status, created_at) VALUES (?, ?, ?, \'pending\', ?)')
+            ->execute([$chatId, $uid, $uid, time()]);
+    });
+    json_out(['ok' => true, 'joined' => false, 'pending' => true]);
+}
 
 if ($action === 'create') {
     $name = field($data, 'name', 30, '群名称');

@@ -13,6 +13,7 @@ function profile_payload(array $user): array
 {
     $profile = user_public($user);
     $profile['created_at'] = (int)$user['created_at'];
+    $profile['level'] = level_of((int)$user['id']);
     return $profile;
 }
 
@@ -29,6 +30,29 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
 require_post();
 $data = request_data();
 $action = (string)($data['action'] ?? 'update');
+
+if ($action === 'email') {
+    rate_guard('profile_email', (string)$uid, 10, 3600);
+    $email = email_normalize((string)($data['email'] ?? ''));
+    $code = (string)preg_replace('/\D/', '', (string)($data['code'] ?? ''));
+    if ($email === '') {
+        fail('请填写新邮箱');
+    }
+    if (strlen($code) !== 6) {
+        fail('请填写邮件里的 6 位验证码');
+    }
+    if (email_taken($email)) {
+        fail('这个邮箱已经被别的账号用了', 409);
+    }
+    if (!email_code_check($email, $code, 'rebind')) {
+        fail('验证码不正确或已过期，请重新获取');
+    }
+    db_write(static function () use ($uid, $email): void {
+        db()->prepare('UPDATE users SET email = ? WHERE id = ?')->execute([$email, $uid]);
+    });
+    $fresh = current_user();
+    json_out(['ok' => true, 'user' => $fresh === null ? null : user_public($fresh) + ['email' => $email]]);
+}
 
 if ($action === 'device-revoke') {
     $id = int_field($data, 'id', '设备');

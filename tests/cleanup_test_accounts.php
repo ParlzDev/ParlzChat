@@ -87,6 +87,8 @@ $pdo->prepare("DELETE FROM group_invites WHERE inviter_id IN ($ph) OR invitee_id
 $pdo->prepare("DELETE FROM devices WHERE user_id IN ($ph)")->execute($ids);
 $pdo->prepare("DELETE FROM presence WHERE user_id IN ($ph)")->execute($ids);
 $pdo->prepare("DELETE FROM login_codes WHERE user_id IN ($ph)")->execute($ids);
+$pdo->prepare("DELETE FROM user_days WHERE user_id IN ($ph)")->execute($ids);
+$pdo->prepare("DELETE FROM face_codes WHERE user_id IN ($ph) OR joined_by IN ($ph)")->execute(array_merge($ids, $ids));
 $pdo->prepare("DELETE FROM user_stickers WHERE user_id IN ($ph)")->execute($ids);
 $pdo->prepare("DELETE FROM favorites WHERE user_id IN ($ph)")->execute($ids);
 $pdo->prepare("DELETE FROM users WHERE id IN ($ph)")->execute($ids);

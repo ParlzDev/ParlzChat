@@ -1,4 +1,4 @@
-import { esc } from './util.js';
+import { esc, loadingHtml } from './util.js';
 import { icon } from './icons.js';
 
 const OFFICE = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
@@ -64,18 +64,13 @@ function fullPageHref(url, internal) {
   return 'proxy.php?url=' + encodeURIComponent(absolute(url));
 }
 
-function headExtra(url, internal) {
-  return '<a class="embed-open" href="' + esc(fullPageHref(url, internal)) + '" title="整页打开">' + icon('expand') + '</a>';
-}
-
-function shell(title, extra, bodyHtml) {
+function shell(title, bodyHtml) {
   close();
   const node = document.createElement('div');
   node.className = 'embed-layer';
   node.innerHTML =
     '<header class="embed-head">' +
       '<span class="embed-title">' + esc(title) + '</span>' +
-      extra +
       '<button type="button" class="embed-close" title="关闭">' + icon('close') + '</button>' +
     '</header>' + bodyHtml;
   document.body.appendChild(node);
@@ -86,8 +81,8 @@ function shell(title, extra, bodyHtml) {
 
 function openImage(url, title) {
   const internal = url.origin === window.location.origin;
-  const node = shell(hostTitle(url, title), headExtra(url, internal),
-    '<div class="embed-image-wrap" id="pv-holder"><p class="setting-desc">正在加载图片…</p></div>');
+  const node = shell(hostTitle(url, title),
+    '<div class="embed-image-wrap" id="pv-holder">loadingHtml()</div>');
   const source = internal ? absolute(url) : 'proxy.php?url=' + encodeURIComponent(absolute(url));
   fetch(source, { credentials: 'same-origin' })
     .then((response) => {
@@ -129,11 +124,35 @@ function openFrame(url, title) {
     openImage(url, title);
     return;
   }
-  shell(hostTitle(url, title), headExtra(url, internal), '<iframe class="embed-frame" src="' + esc(frameSrc(url, internal)) + '"></iframe>');
+  if (internal) {
+    shell(hostTitle(url, title), '<iframe class="embed-frame" src="' + esc(frameSrc(url, internal)) + '"></iframe>');
+    return;
+  }
+  openProxyWindow(url, title);
+}
+
+function openProxyWindow(url, title) {
+  const href = fullPageHref(url, false);
+  const opened = window.open(href, '_blank');
+  if (opened !== null && opened !== undefined) {
+    close();
+    return;
+  }
+  const node = shell(hostTitle(url, title),
+    '<div class="embed-wrap"><div class="embed-card">' +
+      '<h3 class="section-title">浏览器挡住了新窗口</h3>' +
+      '<p class="setting-desc">点下面的按钮，用站内代理打开这个页面</p>' +
+      '<p class="setting-desc mono">' + esc(absolute(url)) + '</p>' +
+      '<div class="form-actions embed-actions">' +
+        '<a class="btn btn-primary" href="' + esc(href) + '" target="_blank" rel="noopener">用代理打开</a>' +
+        '<button type="button" class="btn" id="pv-cancel">取消</button>' +
+      '</div>' +
+    '</div></div>');
+  node.querySelector('#pv-cancel').addEventListener('click', close);
 }
 
 function showRisk(url, title) {
-  const node = shell(hostTitle(url, title), '',
+  const node = shell(hostTitle(url, title),
     '<div class="embed-wrap"><div class="embed-card">' +
       '<h3 class="section-title">即将打开外部网站</h3>' +
       '<p class="setting-desc">这个链接不在 Parlz 站内，请确认来源可信再继续</p>' +

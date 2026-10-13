@@ -87,6 +87,9 @@ function messageItems(message) {
       items.push({ label: '复制文件链接', run: () => copyText(new URL(uploadUrl(file.file), window.location.href).href) });
     }
   }
+  if (message.kind === 'voice' && (window.PARLZ_BOOT ?? {}).stt === true) {
+    items.push({ label: '转文字', run: () => messages.transcribe(message) });
+  }
   if (alive && !mine && chat !== null && chat.type === 'group') {
     items.push({ separator: true });
     items.push({ label: '@' + message.author.nickname, run: () => composer.insertMention(message.author.nickname) });
@@ -334,6 +337,10 @@ export function init() {
       pressTimer = null;
       const target = pressTarget;
       pressTarget = null;
+      const selection = window.getSelection();
+      if (selection !== null && selection.rangeCount > 0) {
+        selection.removeAllRanges();
+      }
       if (target === null || !showMenu(target, pressX, pressY)) {
         return;
       }

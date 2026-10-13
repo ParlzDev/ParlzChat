@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { $, esc, fmtListTime } from './util.js';
+import { $, esc, fmtListTime, loadingHtml } from './util.js';
 import { apiGet } from './api.js';
 import * as messages from './messages.js';
 
@@ -56,7 +56,7 @@ function blockHtml() {
   }
   let html = '<div class="list-head">聊天记录</div>';
   if (results === null) {
-    html += '<p class="empty-note">搜索中…</p>';
+    html += loadingHtml('搜索中');
   } else if (results.length === 0) {
     html += '<p class="empty-note">没有找到相关消息</p>';
   } else {

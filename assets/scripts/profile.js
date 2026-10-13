@@ -1,5 +1,6 @@
 import { state, emit } from './state.js';
-import { $, esc, avatarHtml, toast, paintPage, pageView, armConfirm } from './util.js';
+import { $, esc, avatarHtml, toast, paintPage, pageView, armConfirm, loadingHtml } from './util.js';
+import { levelChips } from './level.js';
 import { apiGet, apiPost } from './api.js';
 import { icon } from './icons.js';
 import * as chats from './chats.js';
@@ -51,7 +52,7 @@ function draw(user) {
   paintPage('profile', '个人资料',
     '<div class="profile-card">' +
       '<div class="profile-top">' + avatarHtml(user, 'avatar-lg', user.online) +
-        '<div><div class="profile-name">' + esc(user.nickname) + '</div>' +
+        '<div><div class="profile-name">' + esc(user.nickname) + levelChips(user.level, true) + '</div>' +
         '<div class="profile-sub mono">@' + esc(user.username) + '</div>' +
         '<div class="uid-row"><span class="uid mono">' + esc(user.uid ?? '') + '</span>' +
         '<button type="button" class="btn btn-sm" data-copy="' + esc(user.uid ?? '') + '">复制 UID</button></div>' +
@@ -69,7 +70,7 @@ export async function render(userId) {
     paintPage('profile', '个人资料', '<p class="empty-note">无法确定要查看的用户</p>');
     return;
   }
-  paintPage('profile', '个人资料', '<p class="empty-note">加载中…</p>');
+  paintPage('profile', '个人资料', loadingHtml());
   try {
     const res = await apiGet('api/users.php', { id });
     draw(res.user);

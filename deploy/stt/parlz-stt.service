@@ -1,0 +1,22 @@
+[Unit]
+Description=Parlz 语音转文字（whisper.cpp 本地小模型）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/parlz-stt
+Environment=PARLZ_STT_HOST=172.18.0.1
+Environment=PARLZ_STT_PORT=9111
+Environment=LD_LIBRARY_PATH=/opt/parlz-stt
+ExecStart=/usr/bin/python3 /opt/parlz-stt/whisper_http.py
+Restart=always
+RestartSec=3
+Nice=10
+CPUQuota=150%
+MemoryHigh=640M
+MemoryMax=768M
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

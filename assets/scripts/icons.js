@@ -35,6 +35,10 @@ export const icons = {
   micOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.6A3 3 0 0 1 15 6v4.5M9 10v2a3 3 0 0 0 4.6 2.5M6.5 12a5.5 5.5 0 0 0 9.4 3.9M12 17.5V21M9.5 21h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.5 4.5l15 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   camOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 10.5l6-3.5v9.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13.4 8H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.5 4.5l15 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 2h2.8l.5 2.4 1.9.8 2.1-1.2 2 2-1.2 2.1.8 1.9 2.4.5v2.8l-2.4.5-.8 1.9 1.2 2.1-2 2-2.1-1.2-1.9.8-.5 2.4h-2.8l-.5-2.4-1.9-.8-2.1 1.2-2-2 1.2-2.1-.8-1.9L2 13.4v-2.8l2.4-.5.8-1.9L4 6.1l2-2 2.1 1.2 1.9-.8z"/><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm0 2a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8z"/></svg>',
+  shot: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1.2 2H20v15H4V5h3.8zM12 8.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 2a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4l2.7 5.6 6.1.8-4.5 4.3 1.1 6L12 17.2 6.6 20.1l1.1-6L3.2 9.8l6.1-.8z"/></svg>',
+  hand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.4 3.2a1.3 1.3 0 0 1 1.3 1.3v5h1V2.8a1.3 1.3 0 0 1 2.6 0v6.7h1V4.2a1.3 1.3 0 0 1 2.6 0v8.3a6.5 6.5 0 0 1-6.5 6.5h-1a5.5 5.5 0 0 1-4.5-2.4L3.4 13a1.4 1.4 0 0 1 2.2-1.6l2.5 2.5V4.5a1.3 1.3 0 0 1 1.3-1.3z"/></svg>',
+  qr: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zm2 2v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM13 13h3v3h-3zm5 0h3v3h-3zm-5 5h3v3h-3zm5 0h3v3h-3z"/></svg>',
 };
 
 export function icon(name) {

@@ -10,6 +10,22 @@ export function esc(value) {
     .replace(/'/g, '&#39;');
 }
 
+export function loadingHtml(label = '加载中', tight = false) {
+  return '<p class="loading' + (tight ? ' is-tight' : '') + '"><span class="loading-ring"></span><span>' + esc(label) + '</span></p>';
+}
+
+export function slideIn(...nodes) {
+  nodes.forEach((node) => {
+    if (node === null || node === undefined) {
+      return;
+    }
+    node.classList.remove('is-entering');
+    void node.offsetWidth;
+    node.classList.add('is-entering');
+    node.addEventListener('animationend', () => node.classList.remove('is-entering'), { once: true });
+  });
+}
+
 export function pad(value) {
   return String(value).padStart(2, '0');
 }

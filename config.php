@@ -39,3 +39,24 @@ define('PARLZ_TURN_PASS', (string)($parlzTurn['pass'] ?? ''));
 define('PARLZ_TURN_TLS', false);
 define('PARLZ_TURN_TRANSPORT', in_array(($parlzTurn['transport'] ?? 'both'), ['tcp', 'udp', 'both'], true) ? (string)$parlzTurn['transport'] : 'both');
 const PARLZ_STICKERS = ['smile', 'grin', 'laugh', 'wink', 'love', 'cool', 'cry', 'angry', 'surprise', 'sleep', 'heart', 'star', 'smug', 'sneak', 'pout', 'doubt', 'speechless', 'fear', 'clap', 'rocket', 'melon', 'moon', 'fire', 'cake'];
+
+$parlzSttFile = __DIR__ . '/data/stt.json';
+$parlzStt = is_file($parlzSttFile) ? json_decode((string)@file_get_contents($parlzSttFile), true) : null;
+$parlzStt = is_array($parlzStt) ? $parlzStt : [];
+define('PARLZ_STT_URL', trim((string)($parlzStt['url'] ?? '')));
+define('PARLZ_STT_API_KEY', trim((string)($parlzStt['api_key'] ?? '')));
+define('PARLZ_STT_PROVIDER', trim((string)($parlzStt['provider'] ?? 'groq')));
+define('PARLZ_STT_API_BASE', trim((string)($parlzStt['api_base'] ?? 'https://api.groq.com/openai/v1')));
+define('PARLZ_STT_MODEL', trim((string)($parlzStt['model'] ?? '')));
+define('PARLZ_STT_TOKEN', trim((string)($parlzStt['token'] ?? '')));
+define('PARLZ_STT_LANG', trim((string)($parlzStt['lang'] ?? 'zh')) !== '' ? trim((string)($parlzStt['lang'] ?? 'zh')) : 'zh');
+
+$parlzMailFile = __DIR__ . '/data/mail.json';
+$parlzMail = is_file($parlzMailFile) ? json_decode((string)@file_get_contents($parlzMailFile), true) : null;
+$parlzMail = is_array($parlzMail) ? $parlzMail : [];
+define('PARLZ_SMTP_HOST', trim((string)($parlzMail['host'] ?? '')));
+define('PARLZ_SMTP_PORT', (int)($parlzMail['port'] ?? 587) > 0 ? (int)($parlzMail['port'] ?? 587) : 587);
+define('PARLZ_SMTP_USER', trim((string)($parlzMail['user'] ?? '')));
+define('PARLZ_SMTP_PASS', (string)($parlzMail['pass'] ?? ''));
+define('PARLZ_EMAIL_CODE_TTL', 600);
+define('PARLZ_EMAIL_CODE_MAX_TRIES', 5);

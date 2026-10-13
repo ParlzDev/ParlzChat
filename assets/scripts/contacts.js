@@ -1,9 +1,11 @@
 import { state, emit } from './state.js';
-import { $, esc, avatarHtml, toast, paintPanel } from './util.js';
+import { $, esc, avatarHtml, toast, paintPanel, loadingHtml, uidForUser } from './util.js';
+import { qrMount } from './qr.js';
 import { apiGet, apiPost } from './api.js';
 import * as drawer from './drawer.js';
 
 let searchResults = null;
+let groupResults = [];
 let searchTimer = null;
 
 export async function refresh() {
@@ -43,16 +45,34 @@ function searchRow(user) {
     '<span class="row-actions">' + action + '</span></div>';
 }
 
+function groupRow(group) {
+  let action = '<button type="button" class="btn btn-sm btn-primary" data-act="ct-join" data-id="' + group.id + '">加入</button>';
+  if (group.joined === true) {
+    action = '<button type="button" class="btn btn-sm" data-act="ct-open" data-id="' + group.id + '">打开</button>';
+  } else if (group.pending === true) {
+    action = '<span class="pending-tag">待审批</span>';
+  } else if (group.join_mode === 'verify') {
+    action = '<button type="button" class="btn btn-sm btn-primary" data-act="ct-join" data-id="' + group.id + '">申请加入</button>';
+  } else if (group.join_mode === 'none') {
+    action = '<span class="pending-tag">不允许加入</span>';
+  }
+  return '<div class="row">' + avatarHtml({ id: group.id, nickname: group.name, avatar: group.avatar ?? '' }, 'avatar-sm') +
+    '<span class="row-main"><span class="row-name">' + esc(group.name) + '</span>' +
+    '<span class="row-sub mono">' + esc(group.uid) + ' · ' + group.members + ' 人</span></span>' +
+    '<span class="row-actions">' + action + '</span></div>';
+}
+
 function renderSearch() {
   let html = '';
   if (state.searchQuery.trim() === '') {
-    html = '<p class="empty-note">输入用户名或昵称，找到对方加为好友</p>';
+    html = '<p class="empty-note">输入用户名 / 昵称加好友，也可以搜群名或群号</p>';
   } else if (searchResults === null) {
-    html = '<p class="empty-note">搜索中…</p>';
-  } else if (searchResults.length === 0) {
-    html = '<p class="empty-note">没有找到这个用户</p>';
+    html = loadingHtml('搜索中');
   } else {
-    html = '<div class="list-head">搜索结果</div>' + searchResults.map(searchRow).join('');
+    html = '<div class="list-head">用户</div>' +
+      (searchResults.length === 0 ? '<p class="empty-note">没有找到这个用户</p>' : searchResults.map(searchRow).join('')) +
+      '<div class="list-head">群聊</div>' +
+      (groupResults.length === 0 ? '<p class="empty-note">没有搜到公开的群</p>' : groupResults.map(groupRow).join(''));
   }
   paintPanel('contacts', html);
 }
@@ -116,9 +136,104 @@ async function runSearch(query) {
   } catch {
     searchResults = [];
   }
+  try {
+    const res = await apiGet('api/groups.php', { action: 'search', q: query });
+    if (state.searchQuery.trim() !== query) {
+      return;
+    }
+    groupResults = res.groups ?? [];
+  } catch {
+    groupResults = [];
+  }
   if (state.view === 'contacts') {
     render();
   }
+}
+
+let faceTimer = 0;
+
+export function openMyCode() {
+  const user = state.user ?? {};
+  const uid = String(user.uid ?? '');
+  drawer.open('我的二维码',
+    '<div class="share-card">' +
+      '<div class="share-qr" id="my-qr-host"></div>' +
+      '<div class="share-name">' + esc(user.nickname ?? '') + '</div>' +
+      '<div class="setting-row"><span class="setting-title">我的 UID</span>' +
+      '<span class="uid-row"><span class="uid mono">' + esc(uid) + '</span>' +
+      '<button type="button" class="btn btn-sm" data-copy="' + esc(uid) + '">复制</button></span></div>' +
+      '<p class="setting-desc">让对方用「扫一扫」对着这个码，就能直接加你好友</p>' +
+    '</div>');
+  qrMount($('#my-qr-host'), uid, 340);
+}
+
+export function openFaceAdd() {
+  window.clearInterval(faceTimer);
+  drawer.open('面对面加好友', loadingHtml());
+  const draw = (code) => {
+    drawer.open('面对面加好友',
+      '<div class="share-card">' +
+        '<p class="setting-desc">两台手机都打开 Parlz。下面这串号码给对方看，或者输入对方的号码</p>' +
+        '<div class="face-code mono" id="face-mine">' + esc(code) + '</div>' +
+        '<div class="form-actions drawer-actions">' +
+          '<button type="button" class="btn btn-sm" id="face-refresh">换一个号码</button>' +
+        '</div>' +
+        '<h3 class="section-title">输入对方号码</h3>' +
+        '<div class="form-actions">' +
+          '<input class="input mono" id="face-input" inputmode="numeric" maxlength="4" placeholder="4 位数字">' +
+          '<button type="button" class="btn btn-primary" id="face-join">加好友</button>' +
+        '</div>' +
+        '<p class="setting-desc" id="face-hint">对方加你之后这里会自动提示</p>' +
+      '</div>');
+    const input = $('#face-input');
+    const join = $('#face-join');
+    const refresh = $('#face-refresh');
+    refresh.addEventListener('click', () => {
+      openFaceAdd();
+    });
+    join.addEventListener('click', async () => {
+      const value = String(input.value).trim();
+      if (value.length !== 4) {
+        toast('请输入 4 位数字', true);
+        return;
+      }
+      join.disabled = true;
+      try {
+        const res = await apiPost('api/friends.php', { action: 'face-join', code: value });
+        toast('已和 ' + res.user.nickname + ' 成为好友');
+        window.clearInterval(faceTimer);
+        await refresh();
+        drawer.close();
+      } catch (error) {
+        toast(error.message, true);
+      } finally {
+        join.disabled = false;
+      }
+    });
+    faceTimer = window.setInterval(async () => {
+      if ($('#face-mine') === null) {
+        window.clearInterval(faceTimer);
+        return;
+      }
+      try {
+        const res = await apiPost('api/friends.php', { action: 'face-status' });
+        if (res.joined !== null && res.joined !== undefined) {
+          window.clearInterval(faceTimer);
+          toast('已和 ' + res.joined.nickname + ' 成为好友');
+          await refresh();
+          drawer.close();
+        }
+      } catch (error) {
+        window.clearInterval(faceTimer);
+      }
+    }, 2500);
+  };
+  apiPost('api/friends.php', { action: 'face-code' })
+    .then((res) => draw(String(res.code)))
+    .catch((error) => {
+      drawer.close();
+      toast(error.message, true);
+    });
 }
 
 export function init() {
@@ -152,6 +267,19 @@ export function init() {
       openDm(id);
     } else if (act === 'ct-open') {
       emit('open-chat', id);
+    } else if (act === 'ct-join') {
+      apiPost('api/groups.php', { action: 'join', chat_id: id })
+        .then(async (res) => {
+          if (res.joined === true) {
+            toast('已加入群聊');
+            await refreshGroups();
+            emit('open-chat', Number(res.chat_id ?? id));
+            return;
+          }
+          toast('已申请加入，等待群主/管理员同意');
+          await runSearch(state.searchQuery.trim());
+        })
+        .catch((error) => toast(error.message, true));
     } else if (act === 'ct-request') {
       apiPost('api/friends.php', { action: 'request', user_id: id })
         .then(async (res) => {

@@ -18,6 +18,7 @@ if ($row === false) {
 }
 
 $profile = user_public($row);
+$profile['level'] = level_of((int)$row['id']);
 $profile['created_at'] = (int)$row['created_at'];
 $profile['relation'] = relation_between((int)$viewer['id'], $id);
 $profile['stats'] = user_stats($id);

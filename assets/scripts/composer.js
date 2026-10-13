@@ -199,6 +199,60 @@ function mentionPanel() {
   return $('#mention-panel');
 }
 
+function morePanel() {
+  return $('#composer-more');
+}
+
+function nativeCapture() {
+  const bridge = window.ParlzDesktop;
+  return bridge !== null && typeof bridge === 'object' && typeof bridge.captureScreen === 'function';
+}
+
+function moreItems() {
+  return [
+    { act: 'image', icon: 'image', label: '上传文件' },
+  ];
+}
+
+function renderMorePanel() {
+  const panel = morePanel();
+  if (panel === null) {
+    return;
+  }
+  panel.innerHTML = moreItems().map((item) =>
+    '<button type="button" class="composer-more-item' + (item.on ? ' is-on' : '') + '" data-more="' + item.act + '">' +
+    icon(item.icon) + '<span>' + esc(item.label) + '</span></button>').join('');
+}
+
+function toggleMore(force) {
+  const panel = morePanel();
+  if (panel === null) {
+    return;
+  }
+  const show = force === undefined ? panel.classList.contains('is-hidden') : force;
+  if (show) {
+    if (!state.activeChat) {
+      toast('先选择一个会话', true);
+      return;
+    }
+    renderMorePanel();
+    hideMentions();
+    togglePanel(false);
+  }
+  panel.classList.toggle('is-hidden', !show);
+  const btn = $('#more-btn');
+  if (btn !== null) {
+    btn.classList.toggle('is-active', show);
+  }
+}
+
+async function runMore(act) {
+  toggleMore(false);
+  if (act === 'image') {
+    $('#image-input').click();
+  }
+}
+
 function resize() {
   const input = inputNode();
   input.style.height = 'auto';
@@ -642,7 +696,14 @@ async function sendImageFile(file) {
 }
 
 async function takeScreenshot() {
-  await cut.start({ onSend: sendImageFile, canSend: true });
+  if (!nativeCapture()) {
+    return;
+  }
+  const data = await cut.capture();
+  if (data === '') {
+    return;
+  }
+  await cut.show(data, { onSend: sendImageFile, canSend: true });
 }
 
 export function init() {
@@ -777,10 +838,32 @@ export function init() {
     send(input.value.trim(), 'text');
   });
 
-  $('#emoji-btn').addEventListener('click', () => togglePanel());
+  $('#voice-btn').addEventListener('click', () => {
+    toggleMore(false);
+    togglePanel(false);
+    setVoiceMode(!voiceMode);
+    if (!voiceMode) {
+      focus();
+    }
+  });
+
+  $('#emoji-btn').addEventListener('click', () => {
+    toggleMore(false);
+    togglePanel();
+  });
+
+  const shotBtn = $('#shot-btn');
+  if (nativeCapture()) {
+    shotBtn.addEventListener('click', () => {
+      toggleMore(false);
+      togglePanel(false);
+      takeScreenshot();
+    });
+  } else {
+    shotBtn.classList.add('is-hidden');
+  }
 
   const imageInput = $('#image-input');
-  $('#image-btn').addEventListener('click', () => imageInput.click());
   imageInput.addEventListener('change', () => {
     const file = imageInput.files && imageInput.files[0];
     if (file) {
@@ -789,33 +872,6 @@ export function init() {
     imageInput.value = '';
   });
 
-  const shotBtn = $('#shot-btn');
-  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-    shotBtn.classList.add('is-hidden');
-  }
-  shotBtn.addEventListener('click', () => takeScreenshot());
-
-  document.addEventListener('keydown', (event) => {
-    const key = event.key === 'a' || event.key === 'A' || event.code === 'KeyA';
-    const windowsLike = event.ctrlKey && event.altKey && !event.shiftKey && !event.metaKey;
-    const macLike = event.metaKey && event.shiftKey && !event.altKey && !event.ctrlKey;
-    if (!key || (!windowsLike && !macLike)) {
-      return;
-    }
-    event.preventDefault();
-    if (state.activeChat === null) {
-      toast('先打开一个会话，截的图会发到那个会话', true);
-      return;
-    }
-    takeScreenshot();
-  });
-
-  $('#voice-btn').addEventListener('click', () => {
-    setVoiceMode(!voiceMode);
-    if (!voiceMode) {
-      focus();
-    }
-  });
   const holdBtn = $('#voice-hold');
   holdBtn.addEventListener('pointerdown', (event) => {
     event.preventDefault();
@@ -839,15 +895,26 @@ export function init() {
   holdBtn.addEventListener('pointerup', (event) => endVoiceHold(event));
   holdBtn.addEventListener('pointercancel', (event) => endVoiceHold(event));
 
-  $('#mention-btn').addEventListener('click', async () => {
-    togglePanel(false);
-    insertAtCursor('@');
-    await ensureMembers(state.activeChat);
-    updateMentions();
-  });
-
   document.addEventListener('click', (event) => {
+    if (event.target.closest('#more-btn') !== null) {
+      toggleMore();
+      return;
+    }
+    const picked = event.target.closest('[data-more]');
+    if (picked !== null) {
+      runMore(picked.dataset.more);
+      return;
+    }
     if (event.target.closest('#sticker-panel') === null && event.target.closest('#emoji-btn') === null) {
+      togglePanel(false);
+    }
+    if (event.target.closest('#composer-more') === null) {
+      toggleMore(false);
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      toggleMore(false);
       togglePanel(false);
     }
   });

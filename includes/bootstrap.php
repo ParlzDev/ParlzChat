@@ -7,6 +7,10 @@ require __DIR__ . '/db.php';
 require __DIR__ . '/http.php';
 require __DIR__ . '/rate.php';
 require __DIR__ . '/queries.php';
+require __DIR__ . '/stt.php';
+require __DIR__ . '/mail.php';
+require __DIR__ . '/email.php';
+require __DIR__ . '/miniapp.php';
 
 function parlz_fail_soft(): void
 {

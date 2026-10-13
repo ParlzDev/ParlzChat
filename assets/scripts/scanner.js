@@ -1,4 +1,6 @@
-import { toast, copyText } from './util.js';
+import { toast, copyText, uidUserId } from './util.js';
+import { state, emit } from './state.js';
+import { apiPost } from './api.js';
 import { icon } from './icons.js';
 import { openPreview } from './preview.js';
 
@@ -23,13 +25,63 @@ function stop() {
   }
 }
 
+async function joinGroup(chatId) {
+  if (chatId <= 0) {
+    toast('这个群号不对', true);
+    return;
+  }
+  try {
+    const res = await apiPost('api/groups.php', { action: 'join', chat_id: chatId });
+    if (res.joined === true) {
+      toast('已加入群聊');
+      const chats = await import('./chats.js');
+      await chats.refresh();
+      emit('open-chat', Number(res.chat_id ?? chatId));
+      return;
+    }
+    toast('已申请加入，等待群主/管理员同意');
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+async function addByUid(code) {
+  const id = uidUserId(code);
+  if (id <= 0) {
+    toast('这个码不认识', true);
+    return;
+  }
+  if (state.user !== null && id === state.user.id) {
+    toast('这是你自己的码');
+    return;
+  }
+  try {
+    const res = await apiPost('api/friends.php', { action: 'quick-add', user_id: id });
+    toast('已添加 ' + res.user.nickname + ' 为好友');
+    const contacts = await import('./contacts.js');
+    await contacts.refresh();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
 export function handleScan(text) {
   const value = String(text ?? '').trim();
   if (value === '') {
     return;
   }
   if (/^[AU]\d{1,12}$/i.test(value)) {
-    openPreview('embed.php?uid=' + encodeURIComponent(value.toUpperCase()), 'Parlz');
+    addByUid(value.toUpperCase());
+    return;
+  }
+  const groupMatch = /^[AG]0*(\d{1,12})$/i.exec(value);
+  if (groupMatch !== null) {
+    joinGroup(Number(groupMatch[1]));
+    return;
+  }
+  const loginMatch = /^L:([a-z0-9]{8,64})$/i.exec(value);
+  if (loginMatch !== null) {
+    openPreview('embed.php?scan=' + encodeURIComponent(loginMatch[1]), '登录确认');
     return;
   }
   let url = null;
@@ -47,7 +99,7 @@ export function handleScan(text) {
         return;
       }
       if (uid !== null && uid !== '') {
-        openPreview('embed.php?uid=' + encodeURIComponent(uid), 'Parlz');
+        addByUid(uid.toUpperCase());
         return;
       }
       openPreview(url.href, 'Parlz');

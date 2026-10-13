@@ -22,7 +22,6 @@ let canvas = null;
 let bar = null;
 let sizeNode = null;
 let holder = null;
-let stream = null;
 let onSend = null;
 let image = null;
 let url = '';
@@ -627,17 +626,12 @@ export function close() {
   drag = null;
   draft = null;
   shapes = [];
-  if (stream !== null) {
-    stream.getTracks().forEach((track) => track.stop());
-    stream = null;
-  }
   onSend = null;
 }
 
 export function show(imageUrl, options) {
   const settings = options ?? {};
   buildLayer(typeof settings.onSend === 'function' || settings.canSend === true);
-  onSend = typeof settings.onSend === 'function' ? settings.onSend : null;
   onSend = typeof settings.onSend === 'function' ? settings.onSend : null;
   const img = new Image();
   img.onload = () => {
@@ -656,56 +650,17 @@ export function show(imageUrl, options) {
   img.src = imageUrl;
 }
 
-export async function start(options) {
-  const settings = options ?? {};
-  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-    toast('当前环境不支持截屏，请用 HTTPS 或 localhost 打开', true);
-    return;
-  }
-  let grabbed = null;
-  try {
-    grabbed = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'monitor' } });
-  } catch (error) {
-    return;
+export async function capture() {
+  const bridge = window.ParlzDesktop;
+  if (bridge === null || typeof bridge !== 'object' || typeof bridge.captureScreen !== 'function') {
+    toast('当前环境不支持截屏', true);
+    return '';
   }
   try {
-    const video = document.createElement('video');
-    video.srcObject = grabbed;
-    video.muted = true;
-    await video.play();
-    await new Promise((resolve) => window.setTimeout(resolve, 240));
-    const shot = document.createElement('canvas');
-    shot.width = video.videoWidth;
-    shot.height = video.videoHeight;
-    shot.getContext('2d').drawImage(video, 0, 0);
-    const data = await new Promise((resolve) => shot.toBlob(resolve, 'image/webp', 0.95));
-    if (data === null) {
-      toast('截屏失败', true);
-      return;
-    }
-    stream = grabbed;
-    show(URL.createObjectURL(data), settings);
+    const data = await bridge.captureScreen();
+    return typeof data === 'string' ? data : '';
   } catch (error) {
     toast('截屏失败', true);
-    grabbed.getTracks().forEach((track) => track.stop());
+    return '';
   }
-}
-
-export function boot() {
-  buildLayer(false);
-  const startNode = $('#cut-start');
-  if (startNode !== null) {
-    startNode.classList.remove('is-hidden');
-    startNode.addEventListener('click', () => {
-      startNode.classList.add('is-hidden');
-      start({}).finally(() => startNode.classList.remove('is-hidden'));
-    });
-  }
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && (layer === null || layer.classList.contains('is-hidden'))) {
-      if (startNode !== null) {
-        startNode.click();
-      }
-    }
-  });
 }
