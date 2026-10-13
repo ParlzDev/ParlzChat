@@ -6,17 +6,28 @@ require __DIR__ . '/../includes/bootstrap.php';
 
 const GCALL_MAX = 8;
 const GCALL_TTL = 150;
+const GCALL_ALIVE = 90;
 const GCALL_SIGNAL_MAX = 16000;
 
 $user = require_user();
 $uid = (int)$user['id'];
 $pdo = db();
 
+function gcall_touch(int $chatId, int $uid): void
+{
+    db_write(static function () use ($chatId, $uid): void {
+        db()->prepare('UPDATE group_call_members SET last_seen = ? WHERE chat_id = ? AND user_id = ?')
+            ->execute([time(), $chatId, $uid]);
+    });
+}
+
 function gcall_sweep(): void
 {
     $cutoff = time() - GCALL_TTL;
+    $dead = time() - GCALL_ALIVE;
     db()->exec('DELETE FROM group_call_signals WHERE created_at < ' . $cutoff);
-    db()->exec('DELETE FROM group_call_states WHERE chat_id NOT IN (SELECT chat_id FROM group_call_members) AND created_at < ' . ($cutoff - 60));
+    db()->exec('DELETE FROM group_call_members WHERE last_seen > 0 AND last_seen < ' . $dead);
+    db()->exec('DELETE FROM group_call_states WHERE chat_id NOT IN (SELECT chat_id FROM group_call_members) AND created_at < ' . ($dead - 30));
 }
 
 function gcall_row(int $chatId): ?array
@@ -42,7 +53,7 @@ function gcall_members(int $chatId): array
     }
     $stmt = db()->prepare('SELECT u.id, u.username, u.nickname, u.bio, u.avatar, m.muted
         FROM group_call_members m JOIN users u ON u.id = m.user_id
-        WHERE m.chat_id = ? ORDER BY m.joined_at ASC');
+        WHERE m.chat_id = ? AND m.last_seen > ' . (time() - 120) . ' ORDER BY m.joined_at ASC');
     $stmt->execute([$chatId]);
     $list = [];
     foreach ($stmt->fetchAll() as $row) {
@@ -126,6 +137,7 @@ if ($action === 'join') {
     $self = user_public($user);
     $self['muted'] = false;
     $self['level'] = level_of($uid);
+    gcall_touch($chatId, $uid);
     gcall_push($chatId, $uid, 0, 'join', (string)json_encode(['user' => $self], JSON_UNESCAPED_UNICODE));
     json_out(['ok' => true] + gcall_status($chatId, $uid));
 }
@@ -153,6 +165,7 @@ if ($action === 'mute') {
     }
     db_write(static function () use ($chatId, $uid, $muted): void {
         db()->prepare('UPDATE group_call_members SET muted = ? WHERE chat_id = ? AND user_id = ?')->execute([$muted, $chatId, $uid]);
+        db()->prepare('UPDATE group_call_members SET last_seen = ? WHERE chat_id = ? AND user_id = ?')->execute([time(), $chatId, $uid]);
     });
     gcall_push($chatId, $uid, 0, 'state', (string)json_encode(['uid' => $uid, 'muted' => $muted === 1]));
     json_out(['ok' => true, 'muted' => $muted === 1]);
@@ -180,6 +193,9 @@ if ($action === 'signal') {
 if ($action === 'poll') {
     $after = (int)($data['after'] ?? 0);
     rate_guard('gcall_poll', $uid . ':' . $chatId, 240, 60);
+    if (in_array($uid, gcall_member_ids($chatId), true)) {
+        gcall_touch($chatId, $uid);
+    }
     $stmt = $pdo->prepare('SELECT id, from_uid, to_uid, kind, payload FROM group_call_signals
         WHERE chat_id = ? AND id > ? AND (to_uid = ? OR to_uid = 0) AND from_uid <> ?
         ORDER BY id ASC LIMIT 160');

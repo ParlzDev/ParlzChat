@@ -1018,15 +1018,16 @@ function call_by_id(int $callId): ?array
 
 function group_calls_for_user(int $userId): array
 {
+    $alive = time() - 120;
     $stmt = db()->prepare('SELECT s.chat_id, s.created_at, s.started_by,
-            (SELECT COUNT(*) FROM group_call_members m WHERE m.chat_id = s.chat_id) AS members
+            (SELECT COUNT(*) FROM group_call_members m WHERE m.chat_id = s.chat_id AND m.last_seen > ' . $alive . ') AS members
         FROM group_call_states s
         JOIN chat_members cm ON cm.chat_id = s.chat_id AND cm.user_id = ?
         WHERE s.created_at > ' . (time() - 6 * 3600) . '
-          AND (SELECT COUNT(*) FROM group_call_members m2 WHERE m2.chat_id = s.chat_id) > 0
+          AND (SELECT COUNT(*) FROM group_call_members m2 WHERE m2.chat_id = s.chat_id AND m2.last_seen > ' . $alive . ') > 0
         ORDER BY s.chat_id');
     $stmt->execute([$userId]);
-    $mine = db()->prepare('SELECT chat_id FROM group_call_members WHERE user_id = ?');
+    $mine = db()->prepare('SELECT chat_id FROM group_call_members WHERE user_id = ? AND last_seen > ' . $alive);
     $mine->execute([$userId]);
     $joined = array_flip(array_map('intval', $mine->fetchAll(PDO::FETCH_COLUMN)));
     $list = [];

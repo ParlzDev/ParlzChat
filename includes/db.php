@@ -355,6 +355,8 @@ function migrate(PDO $pdo): void
     )');
 
     add_column_if_missing($pdo, 'face_codes', 'joined_by', 'INTEGER NOT NULL DEFAULT 0');
+    add_column_if_missing($pdo, 'group_call_members', 'last_seen', 'INTEGER NOT NULL DEFAULT 0');
+    $pdo->exec('UPDATE group_call_members SET last_seen = joined_at WHERE last_seen = 0');
 
     $pdo->exec('DELETE FROM face_codes WHERE created_at < ' . (time() - 3600));
     $pdo->exec('DELETE FROM chats WHERE is_default = 1');
