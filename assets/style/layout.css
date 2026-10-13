@@ -473,7 +473,7 @@
     left: 12px;
     right: 12px;
     bottom: calc(10px + env(safe-area-inset-bottom));
-    height: 58px;
+    height: 68px;
     flex-direction: row;
     justify-content: space-around;
     gap: 0;
@@ -489,7 +489,7 @@
   .rail-pill {
     display: block;
     position: absolute;
-    top: 12px;
+    top: 6px;
     left: 0;
     width: 34px;
     height: 34px;
@@ -506,7 +506,13 @@
   .rail-tab {
     position: relative;
     z-index: 1;
+    gap: 2px;
     transition: color 180ms linear;
+  }
+
+  .rail-tab .rail-label,
+  .rail-avatar .rail-label {
+    line-height: 1.1;
   }
 
   .rail-tab svg {

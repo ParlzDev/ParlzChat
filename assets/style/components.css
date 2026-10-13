@@ -2997,7 +2997,7 @@
   .gcall-panel {
     left: 12px;
     right: 12px;
-    bottom: calc(78px + env(safe-area-inset-bottom));
+    bottom: calc(86px + env(safe-area-inset-bottom));
     width: auto;
     max-height: 46vh;
   }
