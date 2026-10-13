@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Security;
 using System.Text;
 using System.Threading;
@@ -113,7 +115,20 @@ internal static class Program
 
 internal sealed class MainForm : Form
 {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FlashInfo
+    {
+        public int cbSize;
+        public IntPtr hWnd;
+        public uint flags;
+        public uint count;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool FlashWindowEx(ref FlashInfo info);
+
     private readonly WebView2 view = new();
+    private NotifyIcon? tray;
     private string server;
     private string pendingLink;
     private CoreWebView2Environment? environment;
@@ -143,6 +158,77 @@ internal sealed class MainForm : Form
             }
         };
         Load += async (_, _) => await StartAsync();
+        FormClosed += (_, _) =>
+        {
+            if (tray != null)
+            {
+                tray.Visible = false;
+                tray.Dispose();
+                tray = null;
+            }
+        };
+        BuildTray();
+    }
+
+    private void BuildTray()
+    {
+        Icon icon;
+        try
+        {
+            icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+        }
+        catch (Exception)
+        {
+            icon = SystemIcons.Application;
+        }
+
+        tray = new NotifyIcon
+        {
+            Icon = icon,
+            Text = "Parlz",
+            Visible = true,
+        };
+        tray.DoubleClick += (_, _) => ShowFromTray();
+        tray.MouseClick += (_, eventArgs) =>
+        {
+            if (eventArgs.Button == MouseButtons.Left)
+            {
+                ShowFromTray();
+            }
+        };
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("显示 Parlz", null, (_, _) => ShowFromTray());
+        menu.Items.Add("退出", null, (_, _) => ExitApp());
+        tray.ContextMenuStrip = menu;
+    }
+
+    private void ShowFromTray()
+    {
+        Show();
+        if (WindowState == FormWindowState.Minimized)
+        {
+            WindowState = FormWindowState.Normal;
+        }
+        Activate();
+    }
+
+    private void ExitApp()
+    {
+        if (tray != null)
+        {
+            tray.Visible = false;
+        }
+        Close();
+    }
+
+    private void SetBadge(int count)
+    {
+        var label = count > 0 ? "(" + count + ") Parlz" : "Parlz";
+        Text = label;
+        if (tray != null)
+        {
+            tray.Text = label.Length > 63 ? label[..63] : label;
+        }
     }
 
     private void PromptServer()
@@ -237,7 +323,55 @@ internal sealed class MainForm : Form
                 pendingLink = "";
             }
         };
+        target.CoreWebView2.WebMessageReceived += (_, message) =>
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(message.WebMessageAsJson);
+                var root = doc.RootElement;
+                var cmd = root.TryGetProperty("cmd", out var c) ? c.GetString() : "";
+                var count = root.TryGetProperty("count", out var n) && n.TryGetInt32(out var parsed) ? parsed : 0;
+                if (cmd == "notify")
+                {
+                    var title = root.TryGetProperty("title", out var t) ? t.GetString() ?? "Parlz" : "Parlz";
+                    var body = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
+                    ShowTrayNotice(title, body, count);
+                }
+                else if (cmd == "badge")
+                {
+                    SetBadge(count);
+                }
+            }
+            catch (JsonException)
+            {
+            }
+        };
         ListenForLinks();
+    }
+
+    private void ShowTrayNotice(string title, string body, int count)    {
+        if (tray == null)
+        {
+            return;
+        }
+
+        tray.ShowBalloonTip(5000, title, body, ToolTipIcon.None);
+        if (!Focused || !Visible || WindowState == FormWindowState.Minimized)
+        {
+            FlashTaskbar();
+        }
+    }
+
+    private void FlashTaskbar()
+    {
+        var info = new FlashInfo
+        {
+            cbSize = Marshal.SizeOf<FlashInfo>(),
+            hWnd = Handle,
+            flags = 3,
+            count = 3,
+        };
+        FlashWindowEx(ref info);
     }
 
     public void RegisterProtocol()

@@ -5,7 +5,7 @@ import { icon } from './icons.js';
 import * as pz from './pz.js';
 import { applyTheme, themePref } from './theme.js';
 import { enterSends, setEnterSends } from './composer.js';
-import { soundOn, setSound, notifyOn, setNotify, requestNotifyPermission } from './notify.js';
+import { soundOn, setSound, notifyOn, setNotify, requestNotifyPermission, notifyTarget } from './notify.js';
 import { logout } from './auth.js';
 
 let loading = false;
@@ -97,6 +97,12 @@ function relText(ts) {
   }
   const date = new Date(ts * 1000);
   return date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate() + ' 活跃';
+}
+
+const NOTIFY_LABELS = { android: "手机状态栏", windows: "系统托盘", linux: "桌面通知", apple: "通知中心", web: "浏览器通知" };
+
+function notifyChannelLabel() {
+  return NOTIFY_LABELS[notifyTarget()] ?? "系统通知";
 }
 
 function deviceIcon(device) {
@@ -208,7 +214,7 @@ function body() {
       '</div>' +
       '<div class="setting-row">' +
         '<div><div class="setting-title">桌面通知</div>' +
-        '<div class="setting-desc">窗口在后台时弹出系统通知（需浏览器允许）</div></div>' +
+        '<div class="setting-desc">窗口在后台时通知到' + esc(notifyChannelLabel()) + '；网页端需浏览器允许</div></div>' +
         '<div class="segmented" id="notify-seg">' +
           '<button type="button" data-notify="on"' + (notifyPref ? ' class="is-active"' : '') + '>开</button>' +
           '<button type="button" data-notify="off"' + (!notifyPref ? ' class="is-active"' : '') + '>关</button>' +

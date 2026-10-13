@@ -1,4 +1,4 @@
-import { state, emit, chatById, lastMessageId } from './state.js';
+import { state, emit, chatById, lastMessageId, totalUnread } from './state.js';
 import { apiGet } from './api.js';
 import { ping, systemNotify } from './notify.js';
 import * as messages from './messages.js';
@@ -94,7 +94,7 @@ async function tick() {
         ping();
         if (document.hidden) {
           const title = state.activeChat ? state.activeChat.title : 'Parlz';
-          systemNotify(title, notifyPreview(incoming[incoming.length - 1]));
+          systemNotify(title, notifyPreview(incoming[incoming.length - 1]), totalUnread());
         }
       }
     }

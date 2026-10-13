@@ -46,6 +46,30 @@ function refreshBadges() {
   const requestBadge = $('#badge-contacts');
   requestBadge.classList.toggle('is-hidden', state.requests.length === 0);
   requestBadge.textContent = String(state.requests.length);
+  document.title = unread > 0 ? '(' + (unread > 99 ? '99+' : unread) + ') Parlz' : 'Parlz';
+  badgeToShell(unread);
+}
+
+function badgeToShell(unread) {
+  try {
+    if (typeof window.ParlzAndroid?.setBadge === 'function') {
+      window.ParlzAndroid.setBadge(unread);
+      return;
+    }
+    if (typeof window.ParlzLinux?.setBadge === 'function') {
+      window.ParlzLinux.setBadge(unread);
+      return;
+    }
+    if (typeof window.chrome?.webview?.postMessage === 'function') {
+      window.chrome.webview.postMessage({ cmd: 'badge', count: unread });
+      return;
+    }
+    if (typeof window.webkit?.messageHandlers?.parlz?.postMessage === 'function') {
+      window.webkit.messageHandlers.parlz.postMessage({ cmd: 'badge', count: unread });
+    }
+  } catch (error) {
+    return;
+  }
 }
 
 function railItems() {

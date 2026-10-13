@@ -18,7 +18,9 @@ static const gchar *BRIDGE_SCRIPT =
     "beginSave: function (name, mime) { window.webkit.messageHandlers.parlz.postMessage({ cmd: 'beginSave', name: String(name || ''), mime: String(mime || '') }); },"
     "chunkSave: function (data) { window.webkit.messageHandlers.parlz.postMessage({ cmd: 'chunkSave', data: String(data || '') }); },"
     "finishSave: function () { window.webkit.messageHandlers.parlz.postMessage({ cmd: 'finishSave' }); },"
-    "openServerDialog: function () { window.webkit.messageHandlers.parlz.postMessage({ cmd: 'server' }); }"
+    "openServerDialog: function () { window.webkit.messageHandlers.parlz.postMessage({ cmd: 'server' }); },"
+    "notify: function (title, body, count) { window.webkit.messageHandlers.parlz.postMessage({ cmd: 'notify', title: String(title || ''), body: String(body || ''), count: Number(count || 0) }); },"
+    "setBadge: function (count) { window.webkit.messageHandlers.parlz.postMessage({ cmd: 'badge', count: Number(count || 0) }); }"
     "};";
 
 static gchar *g_server = NULL;
@@ -253,6 +255,39 @@ static void prompt_server(ParlzView *view)
     gtk_widget_destroy(dialog);
 }
 
+static void send_desktop_notice(const gchar *title, const gchar *body, gint count)
+{
+    gchar *summary = count > 0 ? g_strdup_printf("%s (%d)", title, count) : g_strdup(title);
+    gchar *argv[] = { (gchar *) "notify-send", (gchar *) "-u", (gchar *) "normal",
+                      summary, (gchar *) (body && *body ? body : " "), NULL };
+    g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL);
+    g_free(summary);
+}
+
+static void mark_window_attention(WebKitWebView *web, gint count)
+{
+    GtkWidget *top = GTK_WIDGET(gtk_widget_get_toplevel(GTK_WIDGET(web)));
+    if (!GTK_IS_WINDOW(top)) {
+        return;
+    }
+    gtk_window_set_urgency_hint(GTK_WINDOW(top), TRUE);
+    gchar *title = count > 0 ? g_strdup_printf("(%d) Parlz", count) : g_strdup("Parlz");
+    gtk_window_set_title(GTK_WINDOW(top), title);
+    g_free(title);
+}
+
+static gboolean on_focus_in(GtkWidget *widget, GdkEventFocus *event, gpointer user_data)
+{
+    (void)event;
+    (void)user_data;
+    GtkWidget *top = GTK_WIDGET(gtk_widget_get_toplevel(widget));
+    if (GTK_IS_WINDOW(top)) {
+        gtk_window_set_urgency_hint(GTK_WINDOW(top), FALSE);
+        gtk_window_set_title(GTK_WINDOW(top), "Parlz");
+    }
+    return FALSE;
+}
+
 static void handle_message(ParlzView *view, JSCValue *value)
 {
     gchar *json = jsc_value_to_json(value, 0);
@@ -272,6 +307,27 @@ static void handle_message(ParlzView *view, JSCValue *value)
         finish_save(view);
     } else if (g_strcmp0(cmd, "server") == 0) {
         prompt_server(view);
+    } else if (g_strcmp0(cmd, "notify") == 0) {
+        gchar *title = json_field(json, "title");
+        gchar *body = json_field(json, "body");
+        gchar *count = json_field(json, "count");
+        send_desktop_notice(title && *title ? title : "Parlz", body ? body : "", count ? (gint) g_ascii_strtoll(count, NULL, 10) : 0);
+        mark_window_attention(view->web, count ? (gint) g_ascii_strtoll(count, NULL, 10) : 1);
+        g_free(title);
+        g_free(body);
+        g_free(count);
+    } else if (g_strcmp0(cmd, "badge") == 0) {
+        gchar *count = json_field(json, "count");
+        gint value = count ? (gint) g_ascii_strtoll(count, NULL, 10) : 0;
+        if (value <= 0) {
+            GtkWidget *top = GTK_WIDGET(gtk_widget_get_toplevel(GTK_WIDGET(view->web)));
+            if (GTK_IS_WINDOW(top)) {
+                gtk_window_set_title(GTK_WINDOW(top), "Parlz");
+            }
+        } else {
+            mark_window_attention(view->web, value);
+        }
+        g_free(count);
     }
     g_free(cmd);
     g_free(json);
@@ -598,6 +654,7 @@ static void open_window(const gchar *uri)
 
     gtk_container_add(GTK_CONTAINER(window), web);
     g_signal_connect(window, "destroy", G_CALLBACK(on_view_destroyed), view);
+    g_signal_connect(window, "focus-in-event", G_CALLBACK(on_focus_in), NULL);
     g_signal_connect(window, "key-press-event", G_CALLBACK(on_key_press), view);
     g_signal_connect(web, "key-press-event", G_CALLBACK(on_key_press), view);
 

@@ -1,6 +1,7 @@
 #import "RootViewController.h"
 #import <AVFoundation/AVFoundation.h>
 #import <Photos/Photos.h>
+#import <UserNotifications/UserNotifications.h>
 
 static NSString *const kServerKey = @"parlz.server";
 static NSString *const kDefaultServer = @"https://chat.parlz.com";
@@ -38,6 +39,13 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+
+    [[UNUserNotificationCenter currentNotificationCenter]
+        requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
+                      completionHandler:^(BOOL granted, NSError *_Nullable error) {
+                          (void) granted;
+                          (void) error;
+                      }];
 
     NSString *stored = [[NSUserDefaults standardUserDefaults] stringForKey:kServerKey];
     self.server = stored.length > 0 ? stored : kDefaultServer;
@@ -119,7 +127,36 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
         [self finishSave];
     } else if ([cmd isEqualToString:@"server"]) {
         [self promptServer];
+    } else if ([cmd isEqualToString:@"notify"]) {
+        [self postNotice:payload[@"title"] body:payload[@"body"] count:[payload[@"count"] integerValue]];
+    } else if ([cmd isEqualToString:@"badge"]) {
+        NSInteger count = [payload[@"count"] integerValue];
+        if (count > 0) {
+            [UIApplication sharedApplication].applicationIconBadgeNumber = (NSInteger) count;
+        } else {
+            [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
+        }
     }
+}
+
+- (void)postNotice:(NSString *)title body:(NSString *)body count:(NSInteger)count {
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    [center getNotificationAuthorizationStatusWithCompletionHandler:^(UNAuthorizationStatus status) {
+        if (status != UNAuthorizationStatusAuthorized) {
+            return;
+        }
+        UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+        content.title = title.length > 0 ? title : @"Parlz";
+        content.body = body ?: @"";
+        if (count > 0) {
+            content.badge = @(count);
+        }
+        content.sound = [UNNotificationSound defaultSound];
+        UNTimeIntervalNotificationTrigger *trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.1 repeats:NO];
+        NSString *identifier = [NSString stringWithFormat:@"parlz-%.0f", [[NSDate date] timeIntervalSince1970] * 1000];
+        UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:trigger];
+        [center addNotificationRequest:request withCompletionHandler:nil];
+    }];
 }
 
 - (void)beginSaveWithName:(NSString *)name mime:(NSString *)mime {

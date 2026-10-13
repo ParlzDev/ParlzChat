@@ -79,12 +79,58 @@ export function ping() {
   }
 }
 
-export function systemNotify(title, body) {
-  if (!notifyOn() || typeof window.Notification !== 'function' || window.Notification.permission !== 'granted') {
+function nativeChannel() {
+  if (typeof window.ParlzAndroid?.notify === 'function') {
+    return 'android';
+  }
+  if (typeof window.ParlzLinux?.notify === 'function') {
+    return 'linux';
+  }
+  if (typeof window.chrome?.webview?.postMessage === 'function') {
+    return 'windows';
+  }
+  if (typeof window.webkit?.messageHandlers?.parlz?.postMessage === 'function') {
+    return 'apple';
+  }
+  return 'web';
+}
+
+export function notifyTarget() {
+  return nativeChannel();
+}
+
+export function systemNotify(title, body, count = 0) {
+  if (!notifyOn()) {
+    return;
+  }
+  const text = String(body ?? '');
+  const head = String(title ?? 'Parlz');
+  const channel = nativeChannel();
+  try {
+    if (channel === 'android') {
+      window.ParlzAndroid.notify(head, text, Math.max(0, count | 0));
+      return;
+    }
+    if (channel === 'linux') {
+      window.ParlzLinux.notify(head, text, Math.max(0, count | 0));
+      return;
+    }
+    if (channel === 'windows') {
+      window.chrome.webview.postMessage({ cmd: 'notify', title: head, body: text, count: Math.max(0, count | 0) });
+      return;
+    }
+    if (channel === 'apple') {
+      window.webkit.messageHandlers.parlz.postMessage({ cmd: 'notify', title: head, body: text, count: Math.max(0, count | 0) });
+      return;
+    }
+  } catch (error) {
+    return;
+  }
+  if (typeof window.Notification !== 'function' || window.Notification.permission !== 'granted') {
     return;
   }
   try {
-    const note = new window.Notification(title, { body, tag: 'parlz-message' });
+    const note = new window.Notification(head, { body: text, tag: 'parlz-message' });
     window.setTimeout(() => note.close(), 6000);
   } catch (error) {
     return;

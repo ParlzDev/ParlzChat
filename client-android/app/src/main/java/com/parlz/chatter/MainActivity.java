@@ -4,6 +4,10 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -47,6 +51,8 @@ public class MainActivity extends Activity {
     private static final String DEFAULT_SERVER = "https://chat.parlz.com";
     private static final int REQ_FILE = 100;
     private static final int REQ_PERMS = 101;
+    private static final String NOTIFY_CHANNEL = "parlz_message";
+    private static final int NOTIFY_ID = 417;
 
     private WebView web;
     private ValueCallback<Uri[]> fileCallback;
@@ -115,9 +121,63 @@ public class MainActivity extends Activity {
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             need.add(android.Manifest.permission.RECORD_AUDIO);
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            need.add(android.Manifest.permission.POST_NOTIFICATIONS);
+        }
         if (!need.isEmpty()) {
             requestPermissions(need.toArray(new String[0]), REQ_PERMS);
         }
+    }
+
+    private void ensureNotifyChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null || manager.getNotificationChannel(NOTIFY_CHANNEL) != null) {
+            return;
+        }
+        NotificationChannel channel = new NotificationChannel(NOTIFY_CHANNEL, "新消息", NotificationManager.IMPORTANCE_HIGH);
+        channel.enableVibration(true);
+        channel.setLightColor(Color.parseColor("#00D95F"));
+        manager.createNotificationChannel(channel);
+    }
+
+    private void postNotify(String title, String body, int count) {
+        ensureNotifyChannel();
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        Intent target = new Intent(this, MainActivity.class);
+        target.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pending = PendingIntent.getActivity(this, 0, target, flags);
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? new Notification.Builder(this, NOTIFY_CHANNEL)
+            : new Notification.Builder(this);
+        builder.setSmallIcon(android.R.drawable.sym_action_chat)
+            .setContentTitle(title == null || title.isEmpty() ? "Parlz" : title)
+            .setContentText(body == null ? "" : body)
+            .setStyle(new Notification.BigTextStyle().bigText(body == null ? "" : body))
+            .setNumber(Math.max(0, count))
+            .setAutoCancel(true)
+            .setWhen(System.currentTimeMillis())
+            .setShowWhen(true)
+            .setContentIntent(pending);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder.setCategory(Notification.CATEGORY_MESSAGE);
+            builder.setVisibility(Notification.VISIBILITY_PRIVATE);
+        }
+        manager.notify(NOTIFY_ID, builder.build());
     }
 
     private void load(String url) {
@@ -345,6 +405,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void toast(String message) {
             runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
+        }
+
+        @JavascriptInterface
+        public void notify(String title, String body, int count) {
+            runOnUiThread(() -> postNotify(title, body, count));
+        }
+
+        @JavascriptInterface
+        public void setBadge(int count) {
+            runOnUiThread(() -> {
+                NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (manager != null && count <= 0) {
+                    manager.cancel(NOTIFY_ID);
+                }
+            });
         }
 
         @JavascriptInterface
