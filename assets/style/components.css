@@ -2094,8 +2094,49 @@
   color: var(--text-dim);
 }
 
+.device-row {
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.device-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--green-ink);
+}
+
+.device-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
 .device-main {
+  flex: 1;
   min-width: 0;
+}
+
+.device-row .setting-title {
+  overflow: hidden;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.device-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.device-meta > span:first-child {
+  flex: none;
 }
 
 .device-row .setting-desc {
@@ -2104,7 +2145,12 @@
   text-overflow: ellipsis;
 }
 
-.device-ua {
+.device-row .device-ua {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 11px;
 }
 

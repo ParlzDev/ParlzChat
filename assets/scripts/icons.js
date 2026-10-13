@@ -3,6 +3,7 @@ export const icons = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 1 0 4.2 12.6l4.1 4.1 1.4-1.4-4.1-4.1A7 7 0 0 0 10 3zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>',
   chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/></svg>',
   users: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 2c-3 0-6 1.6-6 4v2h12v-2c0-2.4-3-4-6-4zm8 .5c-.7 0-1.4.1-2 .3 1.2.9 2 2.1 2 3.2v2h6v-2c0-2.1-2.6-3.5-6-3.5z"/></svg>',
+  desktop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v12H3zm2 2v8h14V6zM9 18h6l1 2H8z"/></svg>',
   user: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9c0-3.3 3.1-6 7-6s7 2.7 7 6z"/></svg>',
   info: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4.5A1.5 1.5 0 1 1 12 9a1.5 1.5 0 0 1 0-3zM11 10.5h2V18h-2z"/></svg>',
   close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5l12.6 12.6-1.4 1.4L5 6.4zM17.6 5l1.4 1.4L6.4 19 5 17.6z"/></svg>',

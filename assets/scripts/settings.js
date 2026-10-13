@@ -98,17 +98,25 @@ function relText(ts) {
   return date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate() + ' 活跃';
 }
 
+function deviceIcon(device) {
+  const label = String(device.label ?? '');
+  const hint = label === '' ? String(device.ua ?? '') : label;
+  return /iphone|ipad|ios|android|mobile|手机|平板/i.test(hint) ? icon('phone') : icon('desktop');
+}
+
 function deviceRows(devices) {
   if (devices === null || devices.length === 0) {
     return '<p class="empty-note">暂无登录设备记录</p>';
   }
   return devices.map((device) =>
     '<div class="setting-row device-row">' +
-      '<div class="device-main"><div class="setting-title">' + esc(device.label || '未知设备') +
+      '<span class="device-icon">' + deviceIcon(device) + '</span>' +
+      '<div class="device-main">' +
+      '<div class="setting-title">' + esc(device.label || '未知设备') +
       (device.current ? '<span class="pending-tag">当前设备</span>' : '') + '</div>' +
-      '<div class="setting-desc">' + esc(device.ip || '未知地址') + ' · ' + relText(device.last_seen) + '</div>' +
-      (device.ua ? '<div class="setting-desc device-ua mono">' + esc(String(device.ua).slice(0, 140)) + '</div>' : '') +
-      '</div>' +
+      '<div class="setting-desc device-meta"><span>' + esc(device.ip || '未知地址') + ' · ' + relText(device.last_seen) + '</span>' +
+      (device.ua ? '<span class="device-ua mono">' + esc(String(device.ua)) + '</span>' : '') +
+      '</div></div>' +
       (device.current ? '' : '<button type="button" class="btn btn-sm" data-act="st-revoke" data-id="' + device.id + '" data-label="退出">退出</button>') +
     '</div>').join('');
 }

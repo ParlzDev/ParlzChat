@@ -205,7 +205,7 @@ async function audit(page, name) {
   await sleep(1400);
   await audit(A.page, '07-通讯录搜群');
 
-  await A.page.goto(BASE + '/index.php?settings', { waitUntil: 'networkidle2' });
+  await A.page.goto(BASE + '/index.php?setting', { waitUntil: 'networkidle2' });
   await sleep(1200);
   await audit(A.page, '08-设置页');
 
