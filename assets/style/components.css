@@ -1137,6 +1137,13 @@
   --sticker-fill: var(--green);
 }
 
+.sticker-bubble.is-custom {
+  width: auto;
+  height: auto;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+}
+
 .image-bubble {
   width: fit-content;
   max-width: 260px;

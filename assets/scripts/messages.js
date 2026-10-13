@@ -272,7 +272,7 @@ function messageNode(message) {
     : message.kind === 'sticker'
       ? '<div class="sticker-bubble">' + (stickerSvg(message.body) || esc(message.body)) + '</div>'
       : message.kind === 'csticker'
-        ? '<div class="sticker-bubble"><img class="csticker-img" src="' + esc(uploadUrl(message.body)) + '" alt="表情" loading="lazy"></div>'
+        ? '<div class="sticker-bubble is-custom"><img class="csticker-img" src="' + esc(uploadUrl(message.body)) + '" alt="表情" loading="lazy"></div>'
         : message.kind === 'merged'
         ? mergedCard(message)
         : message.kind === 'quote'
