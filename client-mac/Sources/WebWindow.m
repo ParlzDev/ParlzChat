@@ -10,10 +10,36 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 @property (nonatomic, copy) NSString *saveMime;
 @property (nonatomic, copy) NSString *savePath;
 @property (nonatomic, strong) NSFileHandle *saveHandle;
+@property (nonatomic, copy) NSString *pendingPz;
+@property (nonatomic, assign) BOOL pageReady;
 
 @end
 
 @implementation WebWindow
+
+- (void)handlePzLink:(NSString *)link {
+    if (link.length == 0) {
+        return;
+    }
+    if (!self.pageReady || self.web == nil) {
+        self.pendingPz = link;
+        return;
+    }
+    NSData *encoded = [NSJSONSerialization dataWithJSONObject:@[ link ] options:0 error:nil];
+    NSString *array = encoded ? [[NSString alloc] initWithData:encoded encoding:NSUTF8StringEncoding] : nil;
+    NSString *arg = array.length > 2 ? [array substringWithRange:NSMakeRange(1, array.length - 2)] : @"\"\"";
+    NSString *js = [NSString stringWithFormat:@"window.ParlzPz && window.ParlzPz(%@);", arg];
+    [self.web evaluateJavaScript:js completionHandler:nil];
+}
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    self.pageReady = YES;
+    if (self.pendingPz.length > 0) {
+        NSString *link = self.pendingPz;
+        self.pendingPz = nil;
+        [self handlePzLink:link];
+    }
+}
 
 - (instancetype)initWithServer:(NSString *)server {
     self = [super init];
@@ -184,11 +210,29 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     return [host.lowercaseString isEqualToString:target.lowercaseString];
 }
 
+#if defined(MAC_OS_VERSION_12_0) && MAC_OS_X_VERSION_MAX_ALLOWED >= 120000
+- (void)webView:(WKWebView *)webView requestMediaCapturePermissionForOrigin:(WKSecurityOrigin *)origin initiatedByFrame:(WKFrameInfo *)frame type:(WKMediaCaptureType)type decisionHandler:(void (^)(WKPermissionDecision))decisionHandler {
+    NSString *host = origin.host.lowercaseString;
+    NSString *target = [NSURL URLWithString:self.server].host.lowercaseString;
+    if (host.length > 0 && target.length > 0 && [host isEqualToString:target]) {
+        [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {}];
+        decisionHandler(WKPermissionDecisionGrant);
+        return;
+    }
+    decisionHandler(WKPermissionDecisionDeny);
+}
+#endif
+
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     NSURL *url = navigationAction.request.URL;
     NSString *scheme = url.scheme.lowercaseString;
     if ([scheme isEqualToString:@"mailto"]) {
         [[NSWorkspace sharedWorkspace] openURL:url];
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
+    }
+    if ([scheme isEqualToString:@"pz"]) {
+        [self handlePzLink:url.absoluteString];
         decisionHandler(WKNavigationActionPolicyCancel);
         return;
     }

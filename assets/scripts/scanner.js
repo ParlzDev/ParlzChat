@@ -25,7 +25,7 @@ function stop() {
   }
 }
 
-async function joinGroup(chatId) {
+export async function joinGroup(chatId) {
   if (chatId <= 0) {
     toast('这个群号不对', true);
     return;
@@ -45,7 +45,7 @@ async function joinGroup(chatId) {
   }
 }
 
-async function addByUid(code) {
+export async function addByUid(code) {
   const id = uidUserId(code);
   if (id <= 0) {
     toast('这个码不认识', true);
@@ -70,7 +70,13 @@ export function handleScan(text) {
   if (value === '') {
     return;
   }
-  if (/^[AU]\d{1,12}$/i.test(value)) {
+  if (/^pz:/i.test(value)) {
+    import('./pz.js').then((mod) => mod.runPz(value)).catch(() => {
+      toast('pz 链接处理失败', true);
+    });
+    return;
+  }
+  if (/^U0*(\d{1,12})$/i.test(value)) {
     addByUid(value.toUpperCase());
     return;
   }

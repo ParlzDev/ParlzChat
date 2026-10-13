@@ -10,5 +10,6 @@ Icon=parlz
 Terminal=false
 Categories=Network;InstantMessaging;Chat;
 Keywords=chat;im;parlz;
+MimeType=x-scheme-handler/pz;
 StartupNotify=true
 StartupWMClass=Parlz

@@ -34,6 +34,19 @@
 	<string>语音消息与语音/视频通话需要使用麦克风</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.parlz.chat.pz</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pz</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

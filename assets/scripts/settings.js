@@ -2,6 +2,7 @@ import { state, emit } from './state.js';
 import { $, esc, avatarHtml, toast, paintPage, pageView, armConfirm } from './util.js';
 import { apiGet, apiPost } from './api.js';
 import { icon } from './icons.js';
+import * as pz from './pz.js';
 import { applyTheme, themePref } from './theme.js';
 import { enterSends, setEnterSends } from './composer.js';
 import { soundOn, setSound, notifyOn, setNotify, requestNotifyPermission } from './notify.js';
@@ -239,6 +240,14 @@ function body() {
       '<div id="call-check-result"></div>' +
     '</div>' +
     '<div class="setting-block">' +
+      '<h3 class="section-title">pz: 深链协议</h3>' +
+      '<div class="pz-table">' + pz.commandTable().map((row) =>
+        '<div class="pz-row"><code class="mono">' + esc(row[0]) + '</code><span>' + esc(row[1]) + '</span></div>').join('') + '</div>' +
+      '<div class="setting-row"><div><div class="setting-title">把 pz: 链接关联到 Parlz</div>' +
+      '<div class="setting-desc">关联后，在系统里点 pz: 链接会用浏览器打开 Parlz 并执行对应操作；桌面/手机客户端已内置同样的命令</div></div>' +
+      '<button type="button" class="btn btn-sm" id="pz-register">关联</button></div>' +
+    '</div>' +
+    '<div class="setting-block">' +
       '<h3 class="section-title">收藏夹</h3>' +
       '<div class="setting-row"><div><div class="setting-title">我的收藏</div>' +
       '<div class="setting-desc">收藏的文字、图片、文件都在这里</div></div>' +
@@ -383,11 +392,27 @@ function wire() {
     });
   }
 
+  const pzBtn = $('#pz-register');
+  if (pzBtn !== null) {
+    pzBtn.addEventListener('click', () => {
+      const target = window.location.origin + '/index.php?pz=%s';
+      if (typeof navigator.registerProtocolHandler !== 'function') {
+        toast('这个浏览器不支持协议关联，用客户端打开 pz: 链接即可', true);
+        return;
+      }
+      try {
+        navigator.registerProtocolHandler('pz', target, 'Parlz');
+        toast('已请求关联 pz: 链接，浏览器会弹确认框');
+      } catch (error) {
+        toast('关联失败：' + error.message, true);
+      }
+    });
+  }
+
   const favBtn = $('#open-favorites');
   if (favBtn !== null) {
     favBtn.addEventListener('click', () => {
-      import('./drawer.js').then(({ openFavorites }) => openFavorites());
-    });
+      import('./drawer.js').then(({ openFavorites }) => openFavorites());    });
   }
 
   const checkBtn = $('#call-check');

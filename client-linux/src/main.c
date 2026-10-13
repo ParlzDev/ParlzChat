@@ -22,6 +22,7 @@ static const gchar *BRIDGE_SCRIPT =
     "};";
 
 static gchar *g_server = NULL;
+static gchar *g_pending_pz = NULL;
 static guint g_windows = 0;
 static gboolean g_downloads_wired = FALSE;
 
@@ -303,6 +304,53 @@ static gboolean is_system_scheme(const gchar *uri)
     return system;
 }
 
+static gboolean is_pz_uri(const gchar *uri)
+{
+    if (uri == NULL) {
+        return FALSE;
+    }
+    gchar *scheme = g_uri_parse_scheme(uri);
+    if (scheme == NULL) {
+        return FALSE;
+    }
+    gboolean pz = g_ascii_strcasecmp(scheme, "pz") == 0;
+    g_free(scheme);
+    return pz;
+}
+
+static void deliver_pz(WebKitWebView *web, const gchar *uri)
+{
+    if (web == NULL || uri == NULL || *uri == '\0') {
+        return;
+    }
+    gchar *safe = g_strescape(uri, NULL);
+    gchar *js = g_strdup_printf("window.ParlzPz && window.ParlzPz(\"%s\");", safe);
+    g_free(safe);
+#if WEBKIT_CHECK_VERSION(2, 40, 0)
+    webkit_web_view_evaluate_javascript(web, js, -1, NULL, NULL, NULL, NULL, NULL);
+#else
+    webkit_web_view_run_javascript(web, js, NULL, NULL, NULL);
+#endif
+    g_free(js);
+}
+
+static void flush_pending_pz(WebKitWebView *web)
+{
+    if (g_pending_pz == NULL) {
+        return;
+    }
+    deliver_pz(web, g_pending_pz);
+    g_clear_pointer(&g_pending_pz, g_free);
+}
+
+static void on_load_changed(WebKitWebView *web, WebKitLoadEvent event, gpointer user_data)
+{
+    (void)user_data;
+    if (event == WEBKIT_LOAD_FINISHED) {
+        flush_pending_pz(web);
+    }
+}
+
 static gboolean on_decide_policy(WebKitWebView *web, WebKitPolicyDecision *decision, WebKitPolicyDecisionType type, gpointer user_data)
 {
     (void)user_data;
@@ -312,6 +360,11 @@ static gboolean on_decide_policy(WebKitWebView *web, WebKitPolicyDecision *decis
     WebKitNavigationAction *action = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(decision));
     WebKitURIRequest *request = webkit_navigation_action_get_request(action);
     const gchar *uri = webkit_uri_request_get_uri(request);
+    if (is_pz_uri(uri)) {
+        deliver_pz(web, uri);
+        webkit_policy_decision_ignore(decision);
+        return TRUE;
+    }
     if (uri == NULL || !is_system_scheme(uri)) {
         return FALSE;
     }
@@ -527,6 +580,7 @@ static void open_window(const gchar *uri)
     webkit_web_view_set_background_color(view->web, &background);
 
     g_signal_connect(view->web, "decide-policy", G_CALLBACK(on_decide_policy), NULL);
+    g_signal_connect(view->web, "load-changed", G_CALLBACK(on_load_changed), NULL);
     g_signal_connect(view->web, "permission-request", G_CALLBACK(on_permission_request), NULL);
     g_signal_connect(view->web, "script-dialog", G_CALLBACK(on_script_dialog), NULL);
 
@@ -579,9 +633,16 @@ int main(int argc, char **argv)
 {
     gtk_init(&argc, &argv);
     g_server = resolve_server(argc, argv);
+    for (int index = 1; index < argc; index++) {
+        if (is_pz_uri(argv[index])) {
+            g_pending_pz = g_strdup(argv[index]);
+            break;
+        }
+    }
     set_window_icon();
     open_window(g_server);
     gtk_main();
     g_free(g_server);
+    g_clear_pointer(&g_pending_pz, g_free);
     return 0;
 }

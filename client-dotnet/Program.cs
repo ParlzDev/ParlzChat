@@ -1,4 +1,9 @@
 using System.Drawing;
+using System.IO;
+using System.IO.Pipes;
+using System.Security;
+using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -8,12 +13,61 @@ namespace Parlz;
 internal static class Program
 {
     private const string DefaultServer = "https://chat.parlz.com";
+    private const string MutexName = "ParlzShellSingle";
+    internal const string PipeName = "ParlzShellPz";
 
     [STAThread]
     private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm(ResolveServer(args)));
+        var server = ResolveServer(args);
+        var link = ResolvePz(args);
+        using var single = new Mutex(true, MutexName, out var first);
+        if (!first)
+        {
+            HandOff(link);
+            return;
+        }
+        var form = new MainForm(server, link);
+        form.RegisterProtocol();
+        Application.Run(form);
+    }
+
+    private static string ResolvePz(string[] args)
+    {
+        foreach (var argument in args)
+        {
+            var value = argument.Trim();
+            if (value.StartsWith("pz:", StringComparison.OrdinalIgnoreCase))
+            {
+                return value;
+            }
+        }
+
+        return "";
+    }
+
+    private static void HandOff(string link)
+    {
+        if (link.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+            client.Connect(1500);
+            using var writer = new StreamWriter(client);
+            writer.Write(link);
+            writer.Flush();
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     private static string ResolveServer(string[] args)
@@ -61,11 +115,13 @@ internal sealed class MainForm : Form
 {
     private readonly WebView2 view = new();
     private string server;
+    private string pendingLink;
     private CoreWebView2Environment? environment;
 
-    public MainForm(string server)
+    public MainForm(string server, string link)
     {
         this.server = server;
+        pendingLink = link;
         Text = "Parlz";
         ClientSize = new Size(1180, 780);
         MinimumSize = new Size(880, 620);
@@ -165,6 +221,114 @@ internal sealed class MainForm : Form
             request.Handled = true;
             OpenPopup(request.Uri);
         };
+        target.CoreWebView2.NavigationStarting += (_, request) =>
+        {
+            if (request.Uri.StartsWith("pz:", StringComparison.OrdinalIgnoreCase))
+            {
+                request.Cancel = true;
+                RunLink(request.Uri);
+            }
+        };
+        target.CoreWebView2.NavigationCompleted += (_, _) =>
+        {
+            if (pendingLink.Length > 0)
+            {
+                RunLink(pendingLink);
+                pendingLink = "";
+            }
+        };
+        ListenForLinks();
+    }
+
+    public void RegisterProtocol()
+    {
+        try
+        {
+            using var root = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Classes\pz");
+            root.SetValue(string.Empty, "URL:Parlz Protocol");
+            root.SetValue("URL Protocol", string.Empty);
+            using var command = root.CreateSubKey(@"shell\open\command");
+            command.SetValue(string.Empty, "\"" + Environment.ProcessPath + "\" \"%1\"");
+        }
+        catch (SecurityException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private void RunLink(string link)
+    {
+        if (view.CoreWebView2 is null || link.Length == 0)
+        {
+            return;
+        }
+
+        _ = view.CoreWebView2.ExecuteScriptAsync("window.ParlzPz && window.ParlzPz(" + Json(link) + ");");
+    }
+
+    private static string Json(string value)
+    {
+        var builder = new StringBuilder("\"");
+        foreach (var character in value)
+        {
+            switch (character)
+            {
+                case '"': builder.Append("\\\""); break;
+                case '\\': builder.Append("\\\\"); break;
+                case '\n': builder.Append("\\n"); break;
+                case '\r': builder.Append("\\r"); break;
+                case '<': builder.Append("\\u003c"); break;
+                case '>': builder.Append("\\u003e"); break;
+                default:
+                    if (character < 0x20)
+                    {
+                        builder.Append("\\u").Append(((int)character).ToString("x4"));
+                    }
+                    else
+                    {
+                        builder.Append(character);
+                    }
+
+                    break;
+            }
+        }
+
+        return builder.Append('"').ToString();
+    }
+
+    private void ListenForLinks()
+    {
+        _ = Task.Run(async () =>
+        {
+            while (!Disposing && !IsDisposed)
+            {
+                try
+                {
+                    using var server = new NamedPipeServerStream(Program.PipeName, PipeDirection.In, 1);
+                    await server.WaitForConnectionAsync();
+                    using var reader = new StreamReader(server);
+                    var link = await reader.ReadToEndAsync();
+                    if (link.Length > 0)
+                    {
+                        BeginInvoke(() => RunLink(link));
+                    }
+                }
+                catch (IOException)
+                {
+                    await Task.Delay(500);
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    return;
+                }
+            }
+        });
     }
 
     private async void OpenPopup(string uri)

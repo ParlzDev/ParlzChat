@@ -55,6 +55,8 @@ public class MainActivity extends Activity {
     private String saveName = "";
     private String saveMime = "application/octet-stream";
     private boolean errorDialogShown = false;
+    private boolean pageReady = false;
+    private String pendingPz = "";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -102,6 +104,7 @@ public class MainActivity extends Activity {
         }
 
         load(server);
+        handleLaunchIntent(getIntent());
     }
 
     private void requestRuntimePermissions() {
@@ -120,6 +123,37 @@ public class MainActivity extends Activity {
     private void load(String url) {
         errorDialogShown = false;
         web.loadUrl(url);
+    }
+
+    private void deliverPz(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return;
+        }
+        String arg = String.valueOf(org.json.JSONObject.wrap(raw));
+        web.evaluateJavascript("window.ParlzPz && window.ParlzPz(" + arg + ");", null);
+    }
+
+    private void handleLaunchIntent(Intent intent) {
+        if (intent == null || intent.getData() == null) {
+            return;
+        }
+        Uri uri = intent.getData();
+        if (uri.getScheme() == null || !uri.getScheme().equalsIgnoreCase("pz")) {
+            return;
+        }
+        pendingPz = uri.toString();
+        intent.setData(null);
+        if (pageReady) {
+            deliverPz(pendingPz);
+            pendingPz = "";
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleLaunchIntent(intent);
     }
 
     private String normalizeServer(String raw) {
@@ -194,6 +228,10 @@ public class MainActivity extends Activity {
                 openExternal(uri);
                 return true;
             }
+            if (scheme.equals("pz")) {
+                deliverPz(uri.toString());
+                return true;
+            }
             return false;
         }
 
@@ -207,6 +245,11 @@ public class MainActivity extends Activity {
         @Override
         public void onPageFinished(WebView view, String url) {
             errorDialogShown = false;
+            pageReady = true;
+            if (!pendingPz.isEmpty()) {
+                deliverPz(pendingPz);
+                pendingPz = "";
+            }
         }
     }
 

@@ -3002,3 +3002,32 @@
     max-height: 46vh;
   }
 }
+
+.pz-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.pz-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  corner-shape: superellipse(2.4);
+}
+
+.pz-row code {
+  flex: none;
+  font-size: 12px;
+  color: var(--green-ink);
+}
+
+.pz-row span {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}

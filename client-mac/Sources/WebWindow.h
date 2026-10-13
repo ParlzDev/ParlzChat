@@ -11,5 +11,6 @@
 - (void)show;
 - (void)reload;
 - (void)promptServer;
+- (void)handlePzLink:(NSString *)link;
 
 @end

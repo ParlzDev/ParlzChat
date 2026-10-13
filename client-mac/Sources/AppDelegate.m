@@ -8,6 +8,14 @@
     [self.window show];
 }
 
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls {
+    for (NSURL *url in urls) {
+        if (url != nil && [url.scheme.lowercaseString isEqualToString:@"pz"]) {
+            [self.window handlePzLink:url.absoluteString];
+        }
+    }
+}
+
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
     return YES;
 }

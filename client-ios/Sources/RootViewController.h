@@ -3,4 +3,6 @@
 
 @interface RootViewController : UIViewController <WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKDownloadDelegate>
 
+- (void)handlePzLink:(NSString *)link;
+
 @end

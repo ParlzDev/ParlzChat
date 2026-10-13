@@ -18,6 +18,7 @@ import * as search from './search.js';
 import * as scan from './scan.js';
 import * as calls from './call.js';
 import * as gcall from './gcall.js';
+import * as pz from './pz.js';
 import * as poller from './poller.js';
 
 const PANEL_TITLES = { chats: '聊天', contacts: '通讯录' };
@@ -326,6 +327,7 @@ export async function startSession(user, route) {
     .catch(() => {});
   poller.start();
   window.requestAnimationFrame(() => moveRailPill(false));
+  pz.consumePz();
 }
 
 function wireNativeGesture() {
@@ -598,6 +600,7 @@ function wire() {
   safeInit('scan', () => scan.init());
   safeInit('calls', () => calls.init());
   safeInit('gcall', () => gcall.init());
+  safeInit('pz', () => pz.installPzBridge());
   auth.initAuth(startSession, (tab) => navigate(tab, 0, { replace: true }));
 }
 
@@ -608,5 +611,6 @@ wire();
 if (boot.user) {
   startSession(boot.user, boot.route ?? { name: 'chat', id: 0 });
 } else {
+  pz.stashPz();
   auth.showAuth(boot.route && boot.route.name === 'register' ? 'register' : 'login');
 }
