@@ -140,6 +140,9 @@ export function avatarHtml(user, size = '', online = false, profile = false) {
   const inner = source.avatar
     ? '<img src="' + avatarUrl(source.avatar) + '" alt="">'
     : '<span>' + esc(initials(source.nickname)) + '</span>';
+  if (source.avatar) {
+    classes.push('is-photo');
+  }
   const status = String(source.status ?? '');
   const dot = online
     ? '<span class="avatar-on" data-status="' + esc(status === '' ? 'online' : status) + '"></span>'

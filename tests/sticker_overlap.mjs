@@ -25,11 +25,11 @@ function check(name, ok, detail) {
   console.log((ok === true ? 'PASS ' : 'FAIL ') + name + (detail === undefined ? '' : ' :: ' + detail));
 }
 
-async function account(browser, tag) {
+async function account(browser, tag, width) {
   const ctx = await browser.createBrowserContext();
   const page = await ctx.newPage();
   await page.setCacheEnabled(false);
-  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await page.setViewport({ width, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.goto(BASE + '/index.php?login', { waitUntil: 'domcontentloaded' });
   const email = 'stk.' + tag + ROUND + '@parlz.com';
   php(['dbval.php', 'seed_code', email, CODE, 'register']);
@@ -51,34 +51,55 @@ async function api(page, path, body) {
 
 async function measure(page) {
   return page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('.csticker-img'));
-    if (rows.length === 0) {
-      return { none: true };
-    }
-    const img = rows[rows.length - 1];
-    const row = img.closest('.msg');
-    const bubble = img.closest('.sticker-bubble');
-    const avatar = row === null ? null : row.querySelector('.avatar');
     const box = (n) => {
-      if (n === null || n === undefined) {
-        return null;
-      }
       const r = n.getBoundingClientRect();
       return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right), bottom: Math.round(r.bottom) };
     };
-    const a = box(avatar);
-    const i = box(img);
-    const b = box(bubble);
-    const hit = a !== null && i !== null && !(i.right <= a.x || i.x >= a.right || i.bottom <= a.y || i.y >= a.bottom);
+    const host = document.querySelector('#chat-body');
+    const rows = Array.from(document.querySelectorAll('.msg')).filter((m) => m.querySelector('.csticker-img') !== null);
     return {
-      avatar: a,
-      img: i,
-      bubble: b,
-      overlap: hit,
-      bubbleContainsImg: b !== null && i !== null && i.x >= b.x - 1 && i.right <= b.right + 1 && i.y >= b.y - 1 && i.bottom <= b.bottom + 1,
-      bubbleClass: bubble === null ? '' : bubble.className,
+      hostBox: host === null ? null : box(host),
+      rows: rows.map((row) => {
+        const img = row.querySelector('.csticker-img');
+        const bubble = row.querySelector('.sticker-bubble');
+        const avatar = row.querySelector('.avatar');
+        const mine = row.classList.contains('msg-mine');
+        const a = box(avatar);
+        const b = box(bubble);
+        const i = box(img);
+        const gap = mine ? a.x - i.right : i.x - a.right;
+        return {
+          mine,
+          avatar: a,
+          bubble: b,
+          img: i,
+          gap,
+          hit: !(i.right <= a.x || i.x >= a.right || i.bottom <= a.y || i.y >= a.bottom),
+          contains: i.x >= b.x - 1 && i.right <= b.right + 1 && i.y >= b.y - 1 && i.bottom <= b.bottom + 1,
+          bubbleClass: bubble.className,
+          rowRight: box(row).right,
+          rowX: box(row).x,
+        };
+      }),
     };
   });
+}
+
+function judge(label, data) {
+  check(label + '：聊天里有表情包', data.rows.length > 0, 'rows=' + data.rows.length);
+  data.rows.forEach((r, index) => {
+    check(label + ' 第' + (index + 1) + '条：表情不压自己头像', r.hit === false, 'avatar ' + JSON.stringify(r.avatar) + ' img ' + JSON.stringify(r.img));
+    check(label + ' 第' + (index + 1) + '条：表情与头像留 >=4px 间隙', r.gap >= 4, 'gap=' + r.gap);
+    check(label + ' 第' + (index + 1) + '条：气泡完整包住图片', r.contains === true, r.bubbleClass);
+    check(label + ' 第' + (index + 1) + '条：整行没超出聊天区', r.rowX >= (data.hostBox === null ? 0 : data.hostBox.x - 1) && r.rowRight <= (data.hostBox === null ? 9999 : data.hostBox.right + 1), 'row ' + r.rowX + '..' + r.rowRight + ' host ' + JSON.stringify(data.hostBox));
+  });
+}
+
+async function openChat(page, chatId) {
+  await page.goto(BASE + '/index.php?chat', { waitUntil: 'domcontentloaded' });
+  await new Promise((r) => setTimeout(r, 1600));
+  await page.evaluate((id) => document.querySelector('[data-chat="' + id + '"]')?.click(), chatId);
+  await new Promise((r) => setTimeout(r, 1600));
 }
 
 (async () => {
@@ -88,8 +109,8 @@ async function measure(page) {
     headless: true,
     args: ['--no-sandbox', '--disable-gpu'],
   });
-  const A = await account(browser, 'a');
-  const B = await account(browser, 'b');
+  const A = await account(browser, 'a', 390);
+  const B = await account(browser, 'b', 390);
   const idA = ids[0];
   const idB = ids[1];
 
@@ -104,29 +125,34 @@ async function measure(page) {
   }, readFileSync(PNG).toString('base64'));
   console.log('上传表情素材:', JSON.stringify(file).slice(0, 120));
   await api(A, '/api/messages.php', { action: 'send', chat_id: dm.chat_id, kind: 'csticker', body: file.file });
+  await api(B, '/api/messages.php', { action: 'send', chat_id: dm.chat_id, kind: 'csticker', body: file.file });
 
-  await A.goto(BASE + '/index.php?chat', { waitUntil: 'domcontentloaded' });
-  await new Promise((r) => setTimeout(r, 1600));
-  await A.evaluate((id) => document.querySelector('[data-chat="' + id + '"]')?.click(), dm.chat_id);
-  await new Promise((r) => setTimeout(r, 1600));
-  const out = await measure(A);
-  console.log('发出方（头像在右）:', JSON.stringify(out));
-  check('发出方：表情图不压头像', out.overlap === false, JSON.stringify(out.avatar) + ' vs ' + JSON.stringify(out.img));
-  check('发出方：气泡包住图片', out.bubbleContainsImg === true, out.bubbleClass);
-
-  await B.goto(BASE + '/index.php?chat', { waitUntil: 'domcontentloaded' });
-  await new Promise((r) => setTimeout(r, 1600));
-  await B.evaluate((id) => document.querySelector('[data-chat="' + id + '"]')?.click(), dm.chat_id);
-  await new Promise((r) => setTimeout(r, 1600));
-  const inc = await measure(B);
-  console.log('接收方（头像在左）:', JSON.stringify(inc));
-  check('接收方：表情图不压头像', inc.overlap === false, JSON.stringify(inc.avatar) + ' vs ' + JSON.stringify(inc.img));
-  check('接收方：气泡包住图片', inc.bubbleContainsImg === true, inc.bubbleClass);
-
-  const row = await B.$('.msg:last-child');
-  if (row !== null) {
-    await row.screenshot({ path: OUT + '/sticker-row.png' });
+  await openChat(A, dm.chat_id);
+  const wide = await measure(A);
+  console.log('390px 双向往:', JSON.stringify(wide.rows.map((r) => ({ mine: r.mine, gap: r.gap, hit: r.hit }))));
+  judge('390px·发出方', wide);
+  await A.evaluate(() => document.querySelectorAll('.sticker-bubble').forEach((n) => n.classList.remove('is-custom')));
+  const stale = await measure(A);
+  console.log('旧 JS（没有 is-custom）:', JSON.stringify(stale.rows.map((r) => ({ mine: r.mine, gap: r.gap, hit: r.hit }))));
+  judge('旧 JS·发出方', stale);
+  const outRow = await A.$('.msg.msg-mine:last-of-type');
+  if (outRow !== null) {
+    await outRow.screenshot({ path: OUT + '/sticker-row-out.png' });
   }
+
+  await openChat(B, dm.chat_id);
+  const inc = await measure(B);
+  console.log('390px 接收方:', JSON.stringify(inc.rows.map((r) => ({ mine: r.mine, gap: r.gap, hit: r.hit }))));
+  judge('390px·接收方', inc);
+  const inRow = await B.$('.msg:not(.msg-mine)');
+  if (inRow !== null) {
+    await inRow.screenshot({ path: OUT + '/sticker-row-in.png' });
+  }
+
+  await A.setViewport({ width: 320, height: 700, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await new Promise((r) => setTimeout(r, 900));
+  judge('320px·发出方', await measure(A));
+
   await browser.close();
   console.log('清理:', php(['cleanup_test_accounts.php', ...ids.map(String)]));
   const bad = results.filter((r) => !r.ok);

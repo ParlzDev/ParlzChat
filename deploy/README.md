@@ -50,3 +50,11 @@
 
 - 本地 `turn/config.json` 也改成指向 `chat.parlz.com:3478`，所以本机 frp 站点打来的电话现在也走公网中继（通话不再依赖内网可达性）；本机那套 `turn/server.js` + 樱花隧道自动识别只在你想用局域网中继时才需要启动
 - 不要再让两台机器同时写同一个 SQLite：需要同步就把本机 `VACUUM INTO` 的快照覆盖到服务器 `data/parlz.sqlite`
+
+## 静态资源缓存（改完没生效的第一嫌疑）
+
+线上 vhost 的真身在服务器 `/www/conf.d/chat.parlz.com.conf`，仓库里同步了一份 `deploy/openresty-chat.parlz.com.conf`。1Panel 默认给 `js|css|png|…` 一整条正则 `expires 300d`，而 `chat.parlz.com.security` 里那条 `no-store` 的 assets 规则排在它后面 —— nginx 的正则 location 只取第一个命中的，所以那条一直没生效：`index.php` 只给顶层 `<link>`/`app.js` 加了 `?v=mtime`，`app.js` 里 `import './util.js'` 这种**不带 query 的相对导入**会被客户端按 300 天缓存，于是"服务器文件已经换了、手机端还在跑旧模块"。
+
+现在 js/css 单独一条 `expires -1`（即 `Cache-Control: no-cache`，靠 ETag 走 304），图片/字体仍 300d。改完 vhost 必须 `docker exec 1Panel-openresty-kHxh nginx -t` 通过再 `nginx -s reload`；1Panel 在控制台改站点设置会重写这个文件，改坏了用同目录 `chat.parlz.com.conf.bak-cachefix` 回滚。
+
+已经在 300 天缓存里躺着旧 `util.js`/`messages.js` 的客户端不会自动回来取新文件，需要清一次缓存：Android 壳 = 系统设置→应用→Parlz→存储→清除缓存；Windows 壳 = 删 `%LOCALAPPDATA%\Parlz\WebView2\Default\Cache`；iPhone Safari = 设置→Safari→清除历史记录与网站数据；桌面浏览器 Ctrl+F5。

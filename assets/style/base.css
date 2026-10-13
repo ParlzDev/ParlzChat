@@ -448,16 +448,31 @@ textarea.input {
   position: absolute;
   right: -1px;
   bottom: -1px;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   background: var(--green);
   border: 2px solid var(--surface);
   border-radius: 999px;
 }
 
-.avatar[data-skin="0"] > .avatar-on:not([data-status]),
-.rail-avatar[data-skin="0"] .avatar-on:not([data-status]) {
+.avatar-sm > .avatar-on {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}
+
+.avatar-lg > .avatar-on {
+  width: 18px;
+  height: 18px;
+}
+
+.avatar[data-skin="0"]:not(.is-photo) .avatar-on:not([data-status]) {
   background: var(--on-green);
+  border-color: var(--surface);
+}
+
+.avatar[data-skin="0"]:not(.is-photo):has(img) .avatar-on:not([data-status]) {
+  background: var(--green);
   border-color: var(--surface);
 }
 

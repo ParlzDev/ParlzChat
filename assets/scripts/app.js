@@ -33,6 +33,7 @@ function renderRailAvatar() {
   const face = user.avatar
     ? '<img src="' + avatarUrl(user.avatar) + '" alt="">'
     : '<span>' + esc(initials(name)) + '</span>';
+  node.classList.toggle('is-photo', Boolean(user.avatar));
   node.innerHTML = '<span class="rail-face">' + face + '<span class="avatar-on"></span></span>' +
     '<span class="rail-label">我</span>';
   node.title = name + ' 的资料';

@@ -21,14 +21,14 @@
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  overflow: hidden;
+  overflow: visible;
   font-size: 17px;
   cursor: pointer;
 }
 
 .rail-avatar .avatar-on {
-  right: 2px;
-  bottom: 2px;
+  right: 1px;
+  bottom: 1px;
 }
 
 .rail-avatar:hover {
@@ -572,7 +572,6 @@
     background: var(--surface-2);
     border: 1px solid var(--line-strong);
     border-radius: 50%;
-    overflow: hidden;
     color: var(--green-ink);
     font-size: 10px;
     font-weight: 700;
@@ -592,11 +591,11 @@
   }
 
   .rail-avatar .avatar-on {
-    right: 2px;
-    bottom: 2px;
+    right: 1px;
+    bottom: 1px;
     width: 10px;
     height: 10px;
-    border-width: 1px;
+    border-width: 1.5px;
   }
 
   .rail-avatar .rail-label {
