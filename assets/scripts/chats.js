@@ -7,6 +7,7 @@ import * as router from './router.js';
 import * as messages from './messages.js';
 import * as composer from './composer.js';
 import * as drawer from './drawer.js';
+import * as gcall from './gcall.js';
 
 let readSentId = 0;
 let readSentAt = 0;
@@ -96,10 +97,13 @@ function convHtml(chat) {
   const showDot = isDm || isSelf;
   const pinMark = chat.pinned ? '<span class="pin-mark" title="置顶">' + icon('pin') + '</span>' : '';
   const mentionTag = chat.mentioned ? '<span class="mention-tag">[有人@我]</span>' : '';
+  const inGroupCall = chat.type === 'group'
+    && (state.groupCalls ?? []).some((item) => Number(item.chat_id) === Number(chat.id));
+  const callMark = inGroupCall ? '<span class="gcall-mark" title="群语音通话中">' + icon('phone') + '</span>' : '';
   return '<button type="button" class="conv' + (active ? ' is-active' : '') + (chat.pinned ? ' is-pinned' : '') + '" data-chat="' + chat.id + '">' +
     avatarHtml({ id: showDot ? chat.avatar_user : chat.id, nickname: chat.title, avatar: chat.avatar, status: chat.status ?? '' }, '', showDot && chat.online === true, showDot) +
     '<span class="conv-main">' +
-      '<span class="conv-top"><span class="conv-name">' + esc(chat.title) + '</span>' + pinMark +
+      '<span class="conv-top"><span class="conv-name">' + esc(chat.title) + '</span>' + pinMark + callMark +
       '<span class="conv-time mono">' + fmtListTime(chat.last ? chat.last.created_at : 0) + '</span></span>' +
       '<span class="conv-bottom">' + mentionTag + '<span class="conv-preview">' + esc(previewOf(chat)) + '</span>' + badge + '</span>' +
     '</span>' +
@@ -250,10 +254,15 @@ export function renderHead() {
     avatarSlot.innerHTML = avatarMarkup;
   }
   const callable = !isGroup && chat.type === 'dm' && chat.avatar_user > 0;
+  const onAir = isGroup && (gcall.inThisChat(chat.id)
+    || (state.groupCalls ?? []).some((item) => Number(item.chat_id) === Number(chat.id)));
   const actionsMarkup = (callable
     ? '<button type="button" class="icon-btn" id="chat-call-audio" title="语音通话">' + icon('phone') + '</button>' +
       '<button type="button" class="icon-btn" id="chat-call-video" title="视频通话">' + icon('video') + '</button>'
     : '') +
+    (isGroup
+      ? '<button type="button" class="icon-btn' + (onAir ? ' is-on' : '') + '" id="chat-gcall" title="' + (onAir ? '群语音通话中' : '发起群语音通话') + '">' + icon('phone') + '</button>'
+      : '') +
     '<button type="button" class="icon-btn" id="chat-info-btn" title="' + (isGroup ? '群信息' : '对方资料') + '">' + icon('info') + '</button>';
   if (headActionsCache !== actionsMarkup) {
     headActionsCache = actionsMarkup;
@@ -360,6 +369,10 @@ export function init() {
     const callVideo = event.target.closest('#chat-call-video');
     if (callVideo !== null) {
       import('./call.js').then(({ start }) => start(state.activeChat.avatar_user, 'video'));
+      return;
+    }
+    if (event.target.closest('#chat-gcall') !== null) {
+      gcall.join(state.activeChat.id).catch(() => {});
       return;
     }
     if (event.target.closest('#chat-info-btn') === null) {

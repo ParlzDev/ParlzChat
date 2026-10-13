@@ -2744,3 +2744,215 @@
   border: none;
   background: var(--bg);
 }
+
+.gcall-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  background: var(--surface-head);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  corner-shape: superellipse(2.4);
+}
+
+.gcall-bar-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.gcall-bar-text {
+  flex: 1;
+  font-size: 13px;
+}
+
+.gcall-mark {
+  display: inline-flex;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  color: var(--green-ink);
+}
+
+.gcall-mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+.gcall-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 480;
+  display: flex;
+  flex-direction: column;
+  width: 296px;
+  max-height: min(54vh, 430px);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  corner-shape: superellipse(2.4);
+}
+
+.gcall-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 9px 12px;
+  background: var(--surface-head);
+  border-bottom: 1px solid var(--line);
+}
+
+.gcall-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.gcall-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gcall-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
+.gcall-time {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--green-ink);
+}
+
+.gcall-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.gcall-tile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  corner-shape: superellipse(2.4);
+  cursor: pointer;
+}
+
+.gcall-tile.is-speaking {
+  background: var(--surface-2);
+  border-color: var(--green);
+}
+
+.gcall-tile-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.gcall-tile-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.gcall-tile-state {
+  font-size: 11px;
+  color: var(--green-ink);
+}
+
+.gcall-tile-state.is-wait {
+  color: var(--text-dim);
+}
+
+.gcall-tile-mic {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--green-ink);
+}
+
+.gcall-tile-mic svg {
+  width: 16px;
+  height: 16px;
+}
+
+.gcall-tile-mic.is-off {
+  color: var(--red);
+}
+
+.gcall-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  padding: 9px 10px;
+  background: var(--surface-head);
+  border-top: 1px solid var(--line);
+}
+
+.gcall-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.gcall-hangup {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--on-red);
+}
+
+.gcall-hangup:hover,
+.gcall-hangup:active {
+  background: var(--on-red);
+  color: var(--red);
+}
+
+.gcall-panel.is-collapsed .gcall-list {
+  display: none;
+}
+
+.gcall-sinks {
+  display: none;
+}
+
+.icon-btn.is-on {
+  background: var(--green);
+  color: var(--on-green);
+}
+
+@media (max-width: 900px) {
+  .gcall-bar {
+    margin: 0 12px 8px;
+  }
+
+  .gcall-panel {
+    left: 12px;
+    right: 12px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 46vh;
+  }
+}

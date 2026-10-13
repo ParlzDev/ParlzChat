@@ -15,6 +15,7 @@ export const state = {
   groups: [],
   chatMembers: {},
   onlineStatus: {},
+  groupCalls: [],
   presence: null,
   devices: null,
   pendingUid: '',

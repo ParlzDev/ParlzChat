@@ -22,6 +22,7 @@ $payload = [
     'chats' => chats_for_user($uid),
     'requests' => pending_request_count($uid),
     'call' => $callRow === null ? null : call_payload($callRow, $uid),
+    'gcalls' => group_calls_for_user($uid),
     'messages' => [],
     'typing' => [],
     'online' => [],

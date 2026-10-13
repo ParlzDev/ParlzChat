@@ -1015,3 +1015,30 @@ function call_by_id(int $callId): ?array
     $row = $stmt->fetch();
     return $row === false ? null : $row;
 }
+
+function group_calls_for_user(int $userId): array
+{
+    $stmt = db()->prepare('SELECT s.chat_id, s.created_at, s.started_by,
+            (SELECT COUNT(*) FROM group_call_members m WHERE m.chat_id = s.chat_id) AS members
+        FROM group_call_states s
+        JOIN chat_members cm ON cm.chat_id = s.chat_id AND cm.user_id = ?
+        WHERE s.created_at > ' . (time() - 6 * 3600) . '
+          AND (SELECT COUNT(*) FROM group_call_members m2 WHERE m2.chat_id = s.chat_id) > 0
+        ORDER BY s.chat_id');
+    $stmt->execute([$userId]);
+    $mine = db()->prepare('SELECT chat_id FROM group_call_members WHERE user_id = ?');
+    $mine->execute([$userId]);
+    $joined = array_flip(array_map('intval', $mine->fetchAll(PDO::FETCH_COLUMN)));
+    $list = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $chatId = (int)$row['chat_id'];
+        $list[] = [
+            'chat_id' => $chatId,
+            'since' => (int)$row['created_at'],
+            'started_by' => (int)$row['started_by'],
+            'members' => (int)$row['members'],
+            'in_call' => isset($joined[$chatId]),
+        ];
+    }
+    return $list;
+}

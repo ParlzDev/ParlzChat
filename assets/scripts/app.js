@@ -17,6 +17,7 @@ import * as preview from './preview.js';
 import * as search from './search.js';
 import * as scan from './scan.js';
 import * as calls from './call.js';
+import * as gcall from './gcall.js';
 import * as poller from './poller.js';
 
 const PANEL_TITLES = { chats: '聊天', contacts: '通讯录' };
@@ -450,7 +451,10 @@ function wire() {
   window.addEventListener('resize', () => moveRailPill(false));
   window.addEventListener('orientationchange', () => window.setTimeout(() => moveRailPill(false), 120));
 
-  $('#logout-btn').addEventListener('click', () => auth.logout());
+  $('#logout-btn').addEventListener('click', () => {
+    gcall.hangUp();
+    auth.logout();
+  });
 
   $('#panel-actions').addEventListener('click', (event) => {
     const addButton = event.target.closest('#panel-add');
@@ -593,6 +597,7 @@ function wire() {
   safeInit('search', () => search.init());
   safeInit('scan', () => scan.init());
   safeInit('calls', () => calls.init());
+  safeInit('gcall', () => gcall.init());
   auth.initAuth(startSession, (tab) => navigate(tab, 0, { replace: true }));
 }
 

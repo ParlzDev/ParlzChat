@@ -5,6 +5,7 @@ import * as messages from './messages.js';
 import * as chats from './chats.js';
 import * as contacts from './contacts.js';
 import { callFromPoll } from './call.js';
+import { syncFromPoll as gcallFromPoll } from './gcall.js';
 
 const INTERVAL = 1600;
 let timer = null;
@@ -77,6 +78,7 @@ async function tick() {
     applyChats(res.chats);
     maybeReload(res.build);
     callFromPoll(res.call ?? null);
+    gcallFromPoll(res.gcalls ?? []);
     if (res.requests !== state.requests.length) {
       contacts.refresh().catch(() => {});
     }

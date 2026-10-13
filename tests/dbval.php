@@ -45,6 +45,52 @@ if ($name === 'clear_codes') {
     exit;
 }
 
+if ($name === 'ids_like') {
+    $stmt = db()->prepare("SELECT id FROM users WHERE username LIKE ? ORDER BY id");
+    $stmt->execute([$arg . '%']);
+    echo implode(' ', array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN))) . PHP_EOL;
+    exit;
+}
+
+if ($name === 'rate_dump') {
+    foreach (db()->query('SELECT key, hits, window_start FROM rate_limits ORDER BY window_start DESC LIMIT 12') as $row) {
+        echo $row['key'] . ' hits=' . (int)$row['hits'] . ' age=' . (time() - (int)$row['window_start']) . 's' . PHP_EOL;
+    }
+    exit;
+}
+
+if ($name === 'list_users') {
+    foreach (db()->query('SELECT id, username FROM users ORDER BY id') as $row) {
+        echo (int)$row['id'] . ' ' . $row['username'] . PHP_EOL;
+    }
+    exit;
+}
+
+if ($name === 'seed_code') {
+    $code = (string)($argv[3] ?? '246810');
+    $purpose = (string)($argv[4] ?? 'register');
+    db()->prepare('DELETE FROM email_codes WHERE email = ?')->execute([$arg]);
+    db()->prepare('INSERT INTO email_codes (email, code, purpose, tries, used, created_at, expires_at) VALUES (?, ?, ?, 0, 0, ?, ?)')
+        ->execute([$arg, $code, $purpose, time(), time() + 600]);
+    echo 'seeded=' . $arg . PHP_EOL;
+    exit;
+}
+
+if ($name === 'friends') {    $stmt = db()->prepare("SELECT friend_id FROM friends WHERE user_id = ? AND status = 'accepted'");
+    $stmt->execute([(int)$arg]);
+    echo implode(',', array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN))) . PHP_EOL;
+    exit;
+}
+
+if ($name === 'gcall_rows') {
+    $chat = (int)$arg;
+    $states = (int)db()->query('SELECT COUNT(*) FROM group_call_states')->fetchColumn();
+    $members = (int)db()->query('SELECT COUNT(*) FROM group_call_members')->fetchColumn();
+    $signals = (int)db()->query('SELECT COUNT(*) FROM group_call_signals')->fetchColumn();
+    echo 'states=' . $states . ' members=' . $members . ' signals=' . $signals . ' chat=' . $chat . PHP_EOL;
+    exit;
+}
+
 if ($name === 'code') {
     $stmt = db()->prepare('SELECT code FROM email_codes WHERE email = ? ORDER BY id DESC LIMIT 1');
     $stmt->execute([$arg]);

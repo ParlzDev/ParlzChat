@@ -35,7 +35,7 @@ function db(): PDO
     $pdo->exec('PRAGMA synchronous = NORMAL');
 
     $stamp = (string)@md5_file(__DIR__ . '/db.php');
-    $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts', 'stt_texts', 'email_codes')")->fetchColumn();
+    $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts', 'stt_texts', 'email_codes', 'group_call_states', 'group_call_members', 'group_call_signals')")->fetchColumn();
     $emailColumn = false;
     foreach (@$pdo->query('PRAGMA table_info(users)') ?: [] as $column) {
         if ((string)$column['name'] === 'email') {
@@ -43,7 +43,7 @@ function db(): PDO
             break;
         }
     }
-    if ($tables < 4 || !$emailColumn || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
+    if ($tables < 7 || !$emailColumn || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
         migrate($pdo);
         @file_put_contents(PARLZ_DATA . '/schema.stamp', $stamp);
     }
@@ -354,8 +354,37 @@ function migrate(PDO $pdo): void
         created_at INTEGER NOT NULL
     )');
 
+    add_column_if_missing($pdo, 'face_codes', 'joined_by', 'INTEGER NOT NULL DEFAULT 0');
+
     $pdo->exec('DELETE FROM face_codes WHERE created_at < ' . (time() - 3600));
     $pdo->exec('DELETE FROM chats WHERE is_default = 1');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS group_call_states (
+        chat_id INTEGER PRIMARY KEY,
+        started_by INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS group_call_members (
+        chat_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        muted INTEGER NOT NULL DEFAULT 0,
+        joined_at INTEGER NOT NULL,
+        PRIMARY KEY (chat_id, user_id)
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS group_call_signals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER NOT NULL,
+        from_uid INTEGER NOT NULL,
+        to_uid INTEGER NOT NULL DEFAULT 0,
+        kind TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    )');
+    $pdo->exec('CREATE INDEX IF NOT EXISTS gcs_target ON group_call_signals (chat_id, to_uid, id)');
+
+    $pdo->exec('DELETE FROM group_call_signals WHERE created_at < ' . (time() - 180));
 
     backfill_merged_avatars($pdo);
 }

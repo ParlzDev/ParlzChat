@@ -83,3 +83,58 @@ foreach ($modules as $file) {
 }
 
 echo $problems === 0 ? 'OK 没有发现漏 import' . PHP_EOL : ('共 ' . $problems . ' 处可疑' . PHP_EOL);
+
+$byFile = [];
+foreach ($modules as $file) {
+    $source = (string)file_get_contents($file);
+    $names = [];
+    preg_match_all('/export\s+(?:async\s+)?(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)/', $source, $matches);
+    $names = $matches[1];
+    preg_match_all('/export\s*\{([^}]*)\}/', $source, $blocks);
+    foreach ($blocks[1] as $block) {
+        foreach (explode(',', $block) as $piece) {
+            $piece = trim($piece);
+            if ($piece !== '') {
+                $names[] = trim(explode(' as ', $piece)[1] ?? $piece);
+            }
+        }
+    }
+    if (preg_match('/export\s+default/', $source) === 1) {
+        $names[] = 'default';
+    }
+    $byFile[basename($file)] = array_flip($names);
+}
+
+$missing = 0;
+foreach ($modules as $file) {
+    $source = (string)file_get_contents($file);
+    preg_match_all('/import\s+([^;]*?)\s+from\s*[\'"](\.\/[A-Za-z0-9._-]+\.js)[\'"]/', $source, $matches, PREG_SET_ORDER);
+    foreach ($matches as $match) {
+        $target = basename($match[2]);
+        if (!isset($byFile[$target])) {
+            echo basename($file) . ': import 了不存在的文件 ' . $match[2] . PHP_EOL;
+            $missing += 1;
+            continue;
+        }
+        $clause = $match[1];
+        if (preg_match('/\{([^}]*)\}/', $clause, $brace) === 1) {
+            foreach (explode(',', $brace[1]) as $piece) {
+                $piece = trim($piece);
+                if ($piece === '') {
+                    continue;
+                }
+                $name = trim(explode(' as ', $piece)[0]);
+                if (!isset($byFile[$target][$name])) {
+                    echo basename($file) . ': ' . $match[2] . ' 没有导出 ' . $name . PHP_EOL;
+                    $missing += 1;
+                }
+            }
+        }
+        if (preg_match('/^\s*[A-Za-z_$][\w$]*\s*$/', $clause) === 1 && !isset($byFile[$target]['default'])) {
+            echo basename($file) . ': ' . $match[2] . ' 没有默认导出' . PHP_EOL;
+            $missing += 1;
+        }
+    }
+}
+
+echo $missing === 0 ? 'OK 所有具名 import 都有对应导出' . PHP_EOL : ('共 ' . $missing . ' 处导出对不上' . PHP_EOL);

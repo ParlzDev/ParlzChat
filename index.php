@@ -215,6 +215,7 @@ $boot = [
         <p>选择左侧会话开始聊天</p>
       </div>
       <div class="chat-notice is-hidden" id="chat-notice"></div>
+      <div class="gcall-bar is-hidden" id="gcall-bar"></div>
       <div class="chat-body is-hidden" id="chat-body"></div>
       <button type="button" class="to-bottom is-hidden" id="to-bottom" title="回到底部">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16.2L5.8 10l1.4-1.4L12 13.4l4.8-4.8L18.2 10z"/></svg>
@@ -310,6 +311,21 @@ $boot = [
     <div class="call-actions" id="call-actions"></div>
   </div>
 </div>
+
+<div class="gcall-panel is-hidden" id="gcall-panel">
+  <header class="gcall-head">
+    <span class="gcall-dot" aria-hidden="true"></span>
+    <span class="gcall-title" id="gcall-title">群语音</span>
+    <span class="gcall-count" id="gcall-count"></span>
+    <span class="gcall-time" id="gcall-time"></span>
+    <button type="button" class="icon-btn" id="gcall-min" title="收起">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16.2L5.8 10l1.4-1.4L12 13.4l4.8-4.8L18.2 10z"/></svg>
+    </button>
+  </header>
+  <div class="gcall-list" id="gcall-list"></div>
+  <div class="gcall-actions" id="gcall-actions"></div>
+</div>
+<div class="gcall-sinks is-hidden" id="gcall-sinks" aria-hidden="true"></div>
 
 <div class="toast-wrap" id="toast-wrap"></div>
 
