@@ -408,6 +408,7 @@ textarea.input {
   width: 100%;
   height: 100%;
   border-radius: inherit;
+  clip-path: circle(50% at 50% 50%);
   object-fit: cover;
 }
 
@@ -452,6 +453,12 @@ textarea.input {
   background: var(--green);
   border: 2px solid var(--surface);
   border-radius: 999px;
+}
+
+.avatar[data-skin="0"] > .avatar-on:not([data-status]),
+.rail-avatar[data-skin="0"] .avatar-on:not([data-status]) {
+  background: var(--on-green);
+  border-color: var(--surface);
 }
 
 .avatar-on[data-status="dnd"] {
