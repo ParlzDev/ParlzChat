@@ -10,6 +10,8 @@ import { logout } from './auth.js';
 
 let loading = false;
 let loaded = false;
+let devicesOpen = false;
+const DEVICE_PREVIEW = 5;
 
 async function loadProfile() {
   if (loaded || loading) {
@@ -235,7 +237,8 @@ function body() {
     '</div>' +
     '<div class="setting-block">' +
       '<h3 class="section-title">登录设备</h3>' +
-      deviceRows(devices) +
+      deviceRows(devices.length > DEVICE_PREVIEW && !devicesOpen ? devices.slice(0, DEVICE_PREVIEW) : devices) +
+      (devices.length > DEVICE_PREVIEW ? '<div class="form-actions setting-actions"><button type="button" class="btn btn-sm" data-act="st-dev-toggle">' + (devicesOpen ? '收起设备列表' : '展开全部 ' + devices.length + ' 台设备') + '</button></div>' : '') +
       (devices.length > 1 ? '<div class="form-actions setting-actions"><button type="button" class="btn btn-sm" data-act="st-revoke-others" data-label="退出其他设备">退出其他设备</button></div>' : '') +
     '</div>' +
     '<div class="setting-block">' +
@@ -353,15 +356,24 @@ function wire() {
   document.querySelectorAll('[data-act="st-revoke"]').forEach((button) => {
     button.addEventListener('click', () => revokeDevice(Number(button.dataset.id)));
   });
+  const devToggle = document.querySelector('[data-act="st-dev-toggle"]');
+  if (devToggle !== null) {
+    devToggle.addEventListener('click', () => {
+      devicesOpen = !devicesOpen;
+      render();
+    });
+  }
   const revokeOthers = document.querySelector('[data-act="st-revoke-others"]');
   if (revokeOthers !== null) {
-    armConfirm(revokeOthers, () => {
-      apiPost('api/profile.php', { action: 'device-revoke-others' })
-        .then(async () => {
-          toast('已退出其他设备');
-          await refreshProfile();
-        })
-        .catch((error) => toast(error.message, true));
+    revokeOthers.addEventListener('click', () => {
+      armConfirm(revokeOthers, () => {
+        apiPost('api/profile.php', { action: 'device-revoke-others' })
+          .then(async () => {
+            toast('已退出其他设备');
+            await refreshProfile();
+          })
+          .catch((error) => toast(error.message, true));
+      });
     });
   }
 

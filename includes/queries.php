@@ -113,19 +113,25 @@ function device_label(string $ua): string
 
 function device_register(int $userId): string
 {
-    $token = bin2hex(random_bytes(16));
     $ua = mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 400);
-    db_write(static function () use ($userId, $token, $ua): void {
-        db()->prepare('INSERT INTO devices (user_id, token, label, ip, ua, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
-            ->execute([
-                $userId,
-                $token,
-                device_label($ua),
-                mb_substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
-                $ua,
-                time(),
-                time(),
-            ]);
+    $ip = mb_substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    $token = '';
+    db_write(static function () use ($userId, $ua, $ip, &$token): void {
+        $now = time();
+        $pdo = db();
+        $find = $pdo->prepare('SELECT id, token FROM devices WHERE user_id = ? AND ip = ? AND ua = ? ORDER BY last_seen DESC, id DESC LIMIT 1');
+        $find->execute([$userId, $ip, $ua]);
+        $row = $find->fetch();
+        if ($row !== false && $row !== null) {
+            $token = (string)$row['token'];
+            $pdo->prepare('UPDATE devices SET last_seen = ? WHERE id = ?')->execute([$now, (int)$row['id']]);
+            $pdo->prepare('DELETE FROM devices WHERE user_id = ? AND ip = ? AND ua = ? AND id <> ?')
+                ->execute([$userId, $ip, $ua, (int)$row['id']]);
+            return;
+        }
+        $token = bin2hex(random_bytes(16));
+        $pdo->prepare('INSERT INTO devices (user_id, token, label, ip, ua, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$userId, $token, device_label($ua), $ip, $ua, $now, $now]);
     });
     db_write(static function () use ($userId): void {
         db()->prepare('DELETE FROM devices WHERE user_id = ? AND id NOT IN (SELECT id FROM devices WHERE user_id = ? ORDER BY last_seen DESC LIMIT 20)')
