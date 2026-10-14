@@ -61,6 +61,11 @@ foreach ($purposes as $purpose => $label) {
     $check($label . '：关键样式是内联的（客户端剥掉 style 块也不塌）',
         str_contains($html, 'style="width:100%;max-width:460px') && str_contains($html, 'letter-spacing:9px'));
     $check($label . '：带深色模式分支', str_contains($html, 'prefers-color-scheme: dark'));
+    $check($label . '：带 BUG 反馈邮箱（两种格式都要有）',
+        str_contains($text, '如有 BUG 反馈请发到 jgz_yes@parlz.com') && str_contains($html, '如有 BUG 反馈请发到 jgz_yes@parlz.com'),
+        'text=' . (str_contains($text, 'jgz_yes@parlz.com') ? 'y' : 'n') . ' html=' . (str_contains($html, 'jgz_yes@parlz.com') ? 'y' : 'n'));
+    $check($label . '：反馈邮箱不做成可点链接（邮件里不许有 href）',
+        str_contains($html, 'jgz_yes@parlz.com') && stripos($html, 'mailto:') === false);
     $check($label . '：带版权署名（两种格式都要有）',
         str_contains($text, '版权 JGZ_YES & Parlz') && str_contains($html, '版权 JGZ_YES &amp; Parlz'),
         'text=' . (str_contains($text, '版权 JGZ_YES & Parlz') ? 'y' : 'n') . ' html=' . (str_contains($html, '版权 JGZ_YES &amp; Parlz') ? 'y' : 'n'));

@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+const PARLZ_MAIL_FEEDBACK = 'jgz_yes@parlz.com';
+const PARLZ_MAIL_COPYRIGHT = '版权 JGZ_YES & Parlz';
+
 function email_ready(): bool
 {
     return parlz_mail_ready();
@@ -107,8 +110,9 @@ function email_code_text(string $nickname, string $code, string $purpose = 'regi
         . '你的 Parlz ' . $copy['title'] . '验证码是 ' . $code . "。\n"
         . $copy['ttl'] . "\n\n"
         . $copy['tip'] . "\n\n"
+        . '如有 BUG 反馈请发到 ' . PARLZ_MAIL_FEEDBACK . "\n"
         . '—— Parlz · chat.parlz.com' . "\n"
-        . '版权 JGZ_YES & Parlz';
+        . PARLZ_MAIL_COPYRIGHT;
 }
 
 function email_code_html(string $nickname, string $code, string $purpose = 'register'): string
@@ -173,8 +177,11 @@ function email_code_html(string $nickname, string $code, string $purpose = 'regi
         . '<p class="mail-muted" style="margin:0;font:400 11px/17px -apple-system,BlinkMacSystemFont,\'Segoe UI\',\'PingFang SC\',\'Microsoft YaHei\',sans-serif;color:#4a7a60;">'
         . '这封邮件由 Parlz 系统自动发送，请直接回到网页填写验证码，不要回复。'
         . '</p>'
+        . '<p class="mail-muted" style="margin:6px 0 0 0;font:400 11px/17px -apple-system,BlinkMacSystemFont,\'Segoe UI\',\'PingFang SC\',\'Microsoft YaHei\',sans-serif;color:#4a7a60;">'
+        . '如有 BUG 反馈请发到 ' . htmlspecialchars(PARLZ_MAIL_FEEDBACK, ENT_QUOTES, 'UTF-8')
+        . '</p>'
         . '<p class="mail-copy" style="margin:6px 0 0 0;font:400 11px/17px -apple-system,BlinkMacSystemFont,\'Segoe UI\',\'PingFang SC\',\'Microsoft YaHei\',sans-serif;color:#4a7a60;">'
-        . '版权 JGZ_YES &amp; Parlz'
+        . htmlspecialchars(PARLZ_MAIL_COPYRIGHT, ENT_QUOTES, 'UTF-8')
         . '</p>'
         . '</td></tr>'
         . '</table>'
