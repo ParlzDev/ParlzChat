@@ -137,7 +137,7 @@ cd client-android
 # 产物：app/build/outputs/apk/debug/app-debug.apk
 ```
 
-**预编译 APK（release 签名，33 KB）**：`https://chat.parlz.com/assets/uploads/parlz-android-1.0.apk`，仓库里也有 `client-android/dist/parlz-android-1.0.apk`；手机打开链接下载安装即可（需允许「安装未知来源应用」）。
+**预编译 APK（release 签名，35 KB）**：`https://chat.parlz.com/assets/uploads/parlz-android-1.0.5.apk`，仓库里也有 `client-android/dist/parlz-android-1.0.5.apk`；手机打开链接下载安装即可（需允许「安装未知来源应用」）。
 
 自己构建需要 JDK 17 + Android SDK（`client-android/README.md` 里有大陆网络下的离线 SDK 与镜像配方），用 Android Studio 打开 `client-android/` 直接 Run 也可以。壳的本事：文件选择（发图 / 发文件 / 头像 / 表情）、相机与麦克风权限（扫码、语音消息、通话）、外部链接交给系统浏览器、返回键网页内后退、下载走分块桥保存到系统下载目录（保留原文件名）。细节与已知边界（WebView 内没有原生通知、无 TURN 的通话限制）见 `client-android/README.md`。
 

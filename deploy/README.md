@@ -40,7 +40,7 @@
 
 ## Android APK
 
-已打包并放在站上供手机下载：`https://chat.parlz.com/assets/uploads/parlz-android-1.0.apk`（33 KB，release 签名；仓库里 `client-android/dist/` 也有一份）。重新打包的命令见 `client-android/README.md`（签名密钥在 `D:/devtools/parlz-release.jks`，换密钥会导致无法覆盖安装）。
+已打包并放在站上供手机下载：`https://chat.parlz.com/assets/uploads/parlz-android-1.0.5.apk`（35 KB，release 签名；仓库里 `client-android/dist/` 也有一份）。重新打包的命令见 `client-android/README.md`（签名密钥在 `D:/devtools/parlz-release.jks`，换密钥会导致无法覆盖安装）。
 
 ## 客户端地址
 

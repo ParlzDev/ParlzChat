@@ -4,8 +4,8 @@
 
 **已打包好可直接安装的 APK**：
 
-- 站内下载（手机浏览器点开即下）：`https://chat.parlz.com/assets/uploads/parlz-android-1.0.apk`
-- 仓库内文件：`client-android/dist/parlz-android-1.0.apk`（33 KB，release 签名版）
+- 站内下载（手机浏览器点开即下）：`https://chat.parlz.com/assets/uploads/parlz-android-1.0.5.apk`
+- 仓库内文件：`client-android/dist/parlz-android-1.0.5.apk`（35 KB，release 签名版）
 
 安装时系统会提示「允许安装未知来源应用」，同意即可；首次打开会申请相机与麦克风（语音消息、扫码、通话要用）。
 
