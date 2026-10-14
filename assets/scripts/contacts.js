@@ -100,7 +100,7 @@ export function render() {
   html += state.groups.length === 0
     ? '<p class="empty-note">还没有群聊，点右上角 + 发起</p>'
     : state.groups.map((group) =>
-      '<div class="row" data-act="ct-open" data-id="' + group.id + '">' + avatarHtml({ id: group.id, nickname: group.name, avatar: '' }, 'avatar-sm') +
+      '<div class="row" data-act="ct-open" data-id="' + group.id + '">' + avatarHtml({ id: group.id, nickname: group.name, avatar: group.avatar ?? '' }, 'avatar-sm') +
       '<span class="row-main"><span class="row-name">' + esc(group.name) + '</span>' +
       '<span class="row-sub mono">' + esc(group.uid ?? '') + '</span>' +
       '<span class="row-sub">' + group.members + ' 人' + (group.is_owner ? ' · 我创建的' : '') + (group.is_default ? ' · 默认群' : '') + '</span></span></div>').join('');
