@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 OUT=dist/Parlz.app
-FRAMEWORKS="-framework Cocoa -framework WebKit -framework AVFoundation"
+FRAMEWORKS="-framework Cocoa -framework WebKit -framework AVFoundation -framework UserNotifications"
 
 if [ "$(uname -s)" = "Darwin" ]; then
     CC=${CC:-clang}

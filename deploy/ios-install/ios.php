@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 const PARLZ_IOS_HOST = 'chat.parlz.com';
-const PARLZ_IOS_IPA = '/assets/uploads/parlz-ios-1.0.4.ipa';
+const PARLZ_IOS_IPA = '/assets/uploads/parlz-ios-1.0.5.ipa';
 const PARLZ_IOS_BUNDLE = 'com.parlz.chatter';
-const PARLZ_IOS_VERSION = '1.0.4';
-const PARLZ_IOS_BUILD = '4';
+const PARLZ_IOS_VERSION = '1.0.5';
+const PARLZ_IOS_BUILD = '5';
 const PARLZ_IOS_TITLE = 'Parlz';
 
 $base = 'https://' . PARLZ_IOS_HOST;
