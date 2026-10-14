@@ -77,7 +77,7 @@ function current_user(): ?array
         return null;
     }
 
-    $stmt = db()->prepare('SELECT id, username, nickname, bio, avatar, created_at FROM users WHERE id = ?');
+    $stmt = db()->prepare('SELECT id, username, nickname, bio, avatar, email, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if ($row === false) {

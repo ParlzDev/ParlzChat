@@ -66,6 +66,12 @@ if ($name === 'list_users') {
     exit;
 }
 
+if ($name === 'set_email') {
+    db()->prepare('UPDATE users SET email = ? WHERE id = ?')->execute([(string)($argv[3] ?? ''), (int)$arg]);
+    echo 'set=' . (int)$arg . PHP_EOL;
+    exit;
+}
+
 if ($name === 'seed_code') {
     $code = (string)($argv[3] ?? '246810');
     $purpose = (string)($argv[4] ?? 'register');

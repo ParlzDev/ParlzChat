@@ -381,16 +381,18 @@ function wire() {
   if (emailBtn !== null) {
     emailBtn.addEventListener('click', () => {
       import('./drawer.js').then(({ open }) => {
-        open('我的邮箱',
-          '<label class="field"><span class="field-label">新邮箱</span>' +
-          '<input class="input" id="new-email" type="email" maxlength="190" value="' + esc(state.user?.email ?? '') + '" placeholder="换成这个邮箱"></label>' +
+        const hasEmail = String(state.user?.email ?? '') !== '';
+        const purpose = hasEmail ? 'rebind' : 'bind';
+        open(hasEmail ? '换绑邮箱' : '绑定邮箱',
+          '<label class="field"><span class="field-label">' + (hasEmail ? '新邮箱' : '要绑定的邮箱') + '</span>' +
+          '<input class="input" id="new-email" type="email" maxlength="190" value="' + esc(state.user?.email ?? '') + '" placeholder="' + (hasEmail ? '换成这个邮箱' : '绑定后可以用这个邮箱找回密码') + '"></label>' +
           '<label class="field"><span class="field-label">验证码</span>' +
-          '<span class="field-code"><input class="input" id="new-email-code" inputmode="numeric" maxlength="6" placeholder="发到新邮箱的 6 位数字">' +
+          '<span class="field-code"><input class="input" id="new-email-code" inputmode="numeric" maxlength="6" placeholder="发到这个邮箱的 6 位数字">' +
           '<button class="btn btn-sm" id="new-email-send" type="button">获取验证码</button></span></label>' +
-          '<div class="form-actions drawer-actions"><button class="btn btn-primary" id="new-email-save" type="button">保存</button></div>');
+          '<div class="form-actions drawer-actions"><button class="btn btn-primary" id="new-email-save" type="button">' + (hasEmail ? '保存' : '绑定') + '</button></div>');
         $('#new-email-send').addEventListener('click', () => {
           const email = String($('#new-email').value ?? '').trim();
-          apiPost('api/email.php', { action: 'send', email, purpose: 'rebind' })
+          apiPost('api/email.php', { action: 'send', email, purpose })
             .then(() => toast('验证码已发到 ' + email))
             .catch((error) => toast(error.message, true));
         });
@@ -400,7 +402,7 @@ function wire() {
             if (state.user !== null && res.user !== null) {
               state.user.email = res.user.email;
             }
-            toast('邮箱已更新');
+            toast(hasEmail ? '邮箱已换绑' : '邮箱已绑定');
             render();
           } catch (error) {
             toast(error.message, true);

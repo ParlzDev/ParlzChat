@@ -13,6 +13,7 @@ function profile_payload(array $user): array
 {
     $profile = user_public($user);
     $profile['created_at'] = (int)$user['created_at'];
+    $profile['email'] = (string)($user['email'] ?? '');
     $profile['level'] = level_of((int)$user['id']);
     return $profile;
 }
@@ -44,7 +45,7 @@ if ($action === 'email') {
     if (email_taken($email)) {
         fail('这个邮箱已经被别的账号用了', 409);
     }
-    if (!email_code_check($email, $code, 'rebind')) {
+    if (!email_code_check($email, $code, trim((string)($user['email'] ?? '')) === '' ? 'bind' : 'rebind')) {
         fail('验证码不正确或已过期，请重新获取');
     }
     db_write(static function () use ($uid, $email): void {

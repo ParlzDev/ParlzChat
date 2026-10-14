@@ -17,7 +17,7 @@ $check = static function (string $name, bool $ok, string $detail = '') use (&$re
 
 $code = '246810';
 $nick = '<img src=x onerror=alert(1)>小明';
-$purposes = ['register' => '注册', 'reset' => '重置密码', 'rebind' => '换绑邮箱'];
+$purposes = ['register' => '注册账号', 'reset' => '重置密码', 'bind' => '绑定邮箱', 'rebind' => '换绑邮箱'];
 
 foreach ($purposes as $purpose => $label) {
     $text = email_code_text($nick, $code, $purpose);
@@ -61,6 +61,9 @@ foreach ($purposes as $purpose => $label) {
     $check($label . '：关键样式是内联的（客户端剥掉 style 块也不塌）',
         str_contains($html, 'style="width:100%;max-width:460px') && str_contains($html, 'letter-spacing:9px'));
     $check($label . '：带深色模式分支', str_contains($html, 'prefers-color-scheme: dark'));
+    $check($label . '：带版权署名（两种格式都要有）',
+        str_contains($text, '版权 JGZ_YES & Parlz') && str_contains($html, '版权 JGZ_YES &amp; Parlz'),
+        'text=' . (str_contains($text, '版权 JGZ_YES & Parlz') ? 'y' : 'n') . ' html=' . (str_contains($html, '版权 JGZ_YES &amp; Parlz') ? 'y' : 'n'));
     $check($label . '：用站点同一套纯色（绿头 + 亮绿码块）',
         str_contains($html, '#00d95f') && str_contains($html, '#04170b') && str_contains($html, '#e4fbec'));
 }

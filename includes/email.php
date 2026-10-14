@@ -76,6 +76,14 @@ function email_copy(string $purpose): array
             'ttl' => '验证码 ' . $minutes . ' 分钟内有效，用过一次就失效。',
         ];
     }
+    if ($purpose === 'bind') {
+        return [
+            'title' => '绑定邮箱',
+            'note' => '你正在给这个 Parlz 账号绑定邮箱。把下面的验证码填回网页就能完成绑定。',
+            'tip' => '如果这不是你本人操作，忽略这封邮件即可，你的账号不会绑定任何邮箱。',
+            'ttl' => '验证码 ' . $minutes . ' 分钟内有效，用过一次就失效。',
+        ];
+    }
     if ($purpose === 'rebind') {
         return [
             'title' => '换绑邮箱',
@@ -99,7 +107,8 @@ function email_code_text(string $nickname, string $code, string $purpose = 'regi
         . '你的 Parlz ' . $copy['title'] . '验证码是 ' . $code . "。\n"
         . $copy['ttl'] . "\n\n"
         . $copy['tip'] . "\n\n"
-        . '—— Parlz · chat.parlz.com';
+        . '—— Parlz · chat.parlz.com' . "\n"
+        . '版权 JGZ_YES & Parlz';
 }
 
 function email_code_html(string $nickname, string $code, string $purpose = 'register'): string
@@ -163,6 +172,9 @@ function email_code_html(string $nickname, string $code, string $purpose = 'regi
         . '<tr><td class="mail-foot" style="padding:14px 22px 18px 22px;background:#f4fdf8;">'
         . '<p class="mail-muted" style="margin:0;font:400 11px/17px -apple-system,BlinkMacSystemFont,\'Segoe UI\',\'PingFang SC\',\'Microsoft YaHei\',sans-serif;color:#4a7a60;">'
         . '这封邮件由 Parlz 系统自动发送，请直接回到网页填写验证码，不要回复。'
+        . '</p>'
+        . '<p class="mail-copy" style="margin:6px 0 0 0;font:400 11px/17px -apple-system,BlinkMacSystemFont,\'Segoe UI\',\'PingFang SC\',\'Microsoft YaHei\',sans-serif;color:#4a7a60;">'
+        . '版权 JGZ_YES &amp; Parlz'
         . '</p>'
         . '</td></tr>'
         . '</table>'
