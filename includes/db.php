@@ -2,6 +2,16 @@
 
 declare(strict_types=1);
 
+function table_has_column(PDO $pdo, string $table, string $column): bool
+{
+    foreach (@$pdo->query('PRAGMA table_info(' . $table . ')') ?: [] as $row) {
+        if ((string)$row['name'] === $column) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function add_column_if_missing(PDO $pdo, string $table, string $column, string $definition): void
 {
     foreach ($pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll() as $info) {
@@ -36,14 +46,8 @@ function db(): PDO
 
     $stamp = (string)@md5_file(__DIR__ . '/db.php');
     $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts', 'stt_texts', 'email_codes', 'group_call_states', 'group_call_members', 'group_call_signals')")->fetchColumn();
-    $emailColumn = false;
-    foreach (@$pdo->query('PRAGMA table_info(users)') ?: [] as $column) {
-        if ((string)$column['name'] === 'email') {
-            $emailColumn = true;
-            break;
-        }
-    }
-    if ($tables < 7 || !$emailColumn || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
+    $ready = table_has_column($pdo, 'users', 'email') && table_has_column($pdo, 'messages', 'meta');
+    if ($tables < 7 || !$ready || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
         migrate($pdo);
         @file_put_contents(PARLZ_DATA . '/schema.stamp', $stamp);
     }
@@ -225,6 +229,7 @@ function migrate(PDO $pdo): void
 
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages (chat_id, id)');
     add_column_if_missing($pdo, 'messages', 'meta', 'TEXT NOT NULL DEFAULT \'\'');
+    backfill_card_meta($pdo);
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_friends_user ON friends (user_id, status)');
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS rate_limits (
@@ -424,6 +429,23 @@ function fill_item_avatars(array &$items, array $byId, array $byName): bool
     }
     unset($item);
     return $changed;
+}
+
+function backfill_card_meta(PDO $pdo): void
+{
+    $legacy = $pdo->query("SELECT id, body FROM messages WHERE kind = 'groupcard' AND meta = '' AND body LIKE '{%'")->fetchAll();
+    if ($legacy === []) {
+        return;
+    }
+    $stmt = $pdo->prepare("UPDATE messages SET meta = ?, body = ? WHERE id = ? AND meta = ''");
+    foreach ($legacy as $row) {
+        $card = json_decode((string)$row['body'], true);
+        if (!is_array($card) || (int)($card['chat_id'] ?? 0) <= 0) {
+            continue;
+        }
+        $name = trim((string)($card['name'] ?? ''));
+        $stmt->execute([(string)$row['body'], '[群名片] ' . ($name === '' ? '群聊' : $name), (int)$row['id']]);
+    }
 }
 
 function backfill_merged_avatars(PDO $pdo): void
