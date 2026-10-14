@@ -182,7 +182,28 @@ public class MainActivity extends Activity {
 
     private void load(String url) {
         errorDialogShown = false;
+        clearCacheIfUpdated();
         web.loadUrl(url);
+    }
+
+    private void clearCacheIfUpdated() {
+        SharedPreferences prefs = getSharedPreferences("parlz.shell", Context.MODE_PRIVATE);
+        String built = appVersion();
+        if (built.equals(prefs.getString("cacheVersion", ""))) {
+            return;
+        }
+        prefs.edit().putString("cacheVersion", built).apply();
+        web.clearCache(true);
+        web.clearFormData();
+    }
+
+    private String appVersion() {
+        try {
+            String name = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            return name == null || name.isEmpty() ? "0" : name;
+        } catch (Exception error) {
+            return "0";
+        }
     }
 
     private void deliverPz(String raw) {

@@ -4,6 +4,7 @@
 #import <UserNotifications/UserNotifications.h>
 
 static NSString *const kServerKey = @"parlz.server";
+static NSString *const kCacheVersionKey = @"parlz.cacheVersion";
 static NSString *const kDefaultServer = @"https://chat.parlz.com";
 
 @interface RootViewController ()
@@ -17,6 +18,7 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 @property (nonatomic, weak) WKDownload *download;
 @property (nonatomic, copy) NSString *pendingPz;
 @property (nonatomic, assign) BOOL pageReady;
+@property (nonatomic, assign) BOOL cacheChecked;
 
 @end
 
@@ -100,6 +102,38 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 }
 
 - (void)loadServer {
+    if (self.cacheChecked) {
+        [self startLoad];
+        return;
+    }
+    self.cacheChecked = YES;
+
+    NSString *built = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"];
+    if (built.length == 0) {
+        built = @"0";
+    }
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if ([[defaults stringForKey:kCacheVersionKey] isEqualToString:built]) {
+        [self startLoad];
+        return;
+    }
+    [defaults setObject:built forKey:kCacheVersionKey];
+
+    NSSet *types = [NSSet setWithArray:@[
+        WKWebsiteDataTypeDiskCache,
+        WKWebsiteDataTypeMemoryCache,
+        WKWebsiteDataTypeOfflineWebApplicationCache,
+    ]];
+    [[WKWebsiteDataStore defaultDataStore] removeDataOfTypes:types
+        modifiedSince:[NSDate dateWithTimeIntervalSince1970:0]
+        completionHandler:^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self startLoad];
+            });
+        }];
+}
+
+- (void)startLoad {
     NSURL *url = [NSURL URLWithString:self.server];
     if (url == nil) {
         return;
