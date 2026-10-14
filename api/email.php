@@ -42,7 +42,8 @@ if ($action === 'send') {
     }
     $code = email_code_issue($email, $purpose);
     $subject = $purpose === 'reset' ? 'Parlz 重置密码验证码' : ($purpose === 'rebind' ? 'Parlz 换绑邮箱验证码' : 'Parlz 注册验证码');
-    if (!parlz_mail_send($email, $subject, email_register_text(mb_substr($nickname, 0, 12), $code))) {
+    $nick = mb_substr($nickname, 0, 12);
+    if (!parlz_mail_send($email, $subject, email_code_text($nick, $code, $purpose), email_code_html($nick, $code, $purpose))) {
         $reason = parlz_mail_last_error();
         error_log('parlz mail failed: ' . $reason);
         fail('验证码发送失败，请稍后再试', 502);

@@ -46,7 +46,39 @@ function parlz_mail_ready(): bool
     return PARLZ_SMTP_HOST !== '' && PARLZ_SMTP_USER !== '' && PARLZ_SMTP_PASS !== '';
 }
 
-function parlz_mail_send(string $to, string $subject, string $text): bool
+function parlz_mail_message(string $to, string $subject, string $text, string $html = ''): string
+{
+    $tag = bin2hex(random_bytes(8));
+    $headers = 'From: =?UTF-8?B?' . base64_encode(PARLZ_NAME) . '?= <' . PARLZ_SMTP_USER . '>' . "\r\n"
+        . 'To: <' . $to . '>' . "\r\n"
+        . 'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=' . "\r\n"
+        . 'MIME-Version: 1.0' . "\r\n"
+        . 'Message-ID: <' . $tag . '@parlz.com>' . "\r\n"
+        . 'Date: ' . date('r') . "\r\n";
+    $encodedText = rtrim(chunk_split(base64_encode($text), 76, "\r\n"));
+
+    if ($html === '') {
+        $headers .= 'Content-Type: text/plain; charset=UTF-8' . "\r\n"
+            . 'Content-Transfer-Encoding: base64' . "\r\n";
+        return $headers . "\r\n" . $encodedText . "\r\n.";
+    }
+
+    $boundary = 'parlz-' . $tag;
+    $encodedHtml = rtrim(chunk_split(base64_encode($html), 76, "\r\n"));
+    $headers .= 'Content-Type: multipart/alternative; boundary="' . $boundary . '"' . "\r\n";
+    $body = '--' . $boundary . "\r\n"
+        . 'Content-Type: text/plain; charset=UTF-8' . "\r\n"
+        . 'Content-Transfer-Encoding: base64' . "\r\n\r\n"
+        . $encodedText . "\r\n"
+        . '--' . $boundary . "\r\n"
+        . 'Content-Type: text/html; charset=UTF-8' . "\r\n"
+        . 'Content-Transfer-Encoding: base64' . "\r\n\r\n"
+        . $encodedHtml . "\r\n"
+        . '--' . $boundary . '--' . "\r\n";
+    return $headers . "\r\n" . $body . '.';
+}
+
+function parlz_mail_send(string $to, string $subject, string $text, string $html = ''): bool
 {
     $GLOBALS['parlzMailError'] = '';
     if (!parlz_mail_ready()) {
@@ -130,17 +162,7 @@ function parlz_mail_send(string $to, string $subject, string $text): bool
         return false;
     }
 
-    $boundary = 'parlz-' . bin2hex(random_bytes(8));
-    $headers = 'From: =?UTF-8?B?' . base64_encode(PARLZ_NAME) . '?= <' . PARLZ_SMTP_USER . '>' . "\r\n"
-        . 'To: <' . $to . '>' . "\r\n"
-        . 'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=' . "\r\n"
-        . 'MIME-Version: 1.0' . "\r\n"
-        . 'Content-Type: text/plain; charset=UTF-8' . "\r\n"
-        . 'Content-Transfer-Encoding: base64' . "\r\n"
-        . 'Message-ID: <' . $boundary . '@parlz.com>' . "\r\n"
-        . 'Date: ' . date('r') . "\r\n";
-    $encoded = rtrim(chunk_split(base64_encode($text), 76, "\r\n"));
-    $sent = parlz_mail_cmd($fp, $headers . "\r\n" . $encoded . "\r\n.", '250');
+    $sent = parlz_mail_cmd($fp, parlz_mail_message($to, $subject, $text, $html), '250');
     $ok = str_starts_with($sent, '250');
     parlz_mail_cmd($fp, 'QUIT', '221');
     fclose($fp);
