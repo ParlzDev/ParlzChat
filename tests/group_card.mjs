@@ -203,12 +203,18 @@ async function cardState(page) {
   });
   const stored = await A.page.evaluate(async (chatId) => {
     const res = await (await fetch('/api/messages.php?chat_id=' + chatId + '&before=0&limit=50')).json();
-    return (res.messages ?? []).filter((m) => m.kind === 'groupcard').map((m) => String(m.body));
+    return (res.messages ?? []).filter((m) => m.kind === 'groupcard').map((m) => ({ body: String(m.body ?? ''), meta: String(m.meta ?? '') }));
   }, dm.chat_id);
-  const all = stored.join(' ');
+  const all = stored.map((m) => m.body + ' ' + m.meta).join(' ');
   check('卡片内容以数据库为准，客户端伪造无效', spoof.ok === true && stored.length >= 2
     && all.includes('假群名') === false && all.includes('evil.webp') === false && all.includes('9999') === false
     && all.includes('名片群') === true, all.slice(0, 220));
+  const readable = stored.filter((m) => m.body.includes('[群名片]') && m.body.includes('名片群'));
+  check('正文是人类可读文本，旧客户端也不会看到 JSON', readable.length === stored.length
+    && stored.every((m) => m.body.includes('{') === false && m.body.includes('"chat_id"') === false),
+    stored.map((m) => m.body).join(' | '));
+  check('卡片数据在 meta 里（新客户端靠它渲染）', stored.every((m) => m.meta.includes('"chat_id"') && m.meta.includes('名片群')),
+    stored.length > 0 ? stored[0].meta.slice(0, 140) : 'empty');
 
   const fav = await api(B.page, '/api/favorites.php', { action: 'add', kind: 'groupcard', body: JSON.stringify({ chat_id: gid, uid: gUid, name: '名片群' + ROUND, avatar: '', members: 2 }) });
   const favList = await B.page.evaluate(async () => (await (await fetch('/api/favorites.php'))).json());

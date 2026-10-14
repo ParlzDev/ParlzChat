@@ -391,6 +391,7 @@ function message_payload(array $row): array
         'user_id' => (int)$row['user_id'],
         'body' => $row['body'],
         'kind' => $row['kind'],
+        'meta' => (string)($row['meta'] ?? ''),
         'created_at' => (int)$row['created_at'],
         'author' => [
             'id' => (int)$row['user_id'],
@@ -405,7 +406,7 @@ function message_payload(array $row): array
 
 function messages_page(int $chatId, int $before, int $limit = 40): array
 {
-    $sql = 'SELECT m.id, m.chat_id, m.user_id, m.body, m.kind, m.created_at,
+    $sql = 'SELECT m.id, m.chat_id, m.user_id, m.body, m.kind, m.meta, m.created_at,
             COALESCE(NULLIF(cm.nickname, \'\'), u.nickname) AS nickname, u.username, u.avatar
             FROM messages m
             JOIN users u ON u.id = m.user_id
@@ -424,7 +425,7 @@ function messages_page(int $chatId, int $before, int $limit = 40): array
 
 function messages_after(int $chatId, int $after, int $limit = 200): array
 {
-    $stmt = db()->prepare('SELECT m.id, m.chat_id, m.user_id, m.body, m.kind, m.created_at,
+    $stmt = db()->prepare('SELECT m.id, m.chat_id, m.user_id, m.body, m.kind, m.meta, m.created_at,
             COALESCE(NULLIF(cm.nickname, \'\'), u.nickname) AS nickname, u.username, u.avatar
             FROM messages m
             JOIN users u ON u.id = m.user_id
@@ -434,17 +435,17 @@ function messages_after(int $chatId, int $after, int $limit = 200): array
     return array_map('message_payload', $stmt->fetchAll());
 }
 
-function push_message(int $chatId, int $userId, string $body, string $kind = 'text'): array
+function push_message(int $chatId, int $userId, string $body, string $kind = 'text', string $meta = ''): array
 {
     if ($kind !== 'system' && $kind !== 'call' && $kind !== 'poke') {
         user_day_bump($userId);
     }
     $pdo = db();
-    $stmt = $pdo->prepare('INSERT INTO messages (chat_id, user_id, body, kind, created_at) VALUES (?, ?, ?, ?, ?)');
-    $stmt->execute([$chatId, $userId, $body, $kind, time()]);
+    $stmt = $pdo->prepare('INSERT INTO messages (chat_id, user_id, body, kind, meta, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+    $stmt->execute([$chatId, $userId, $body, $kind, $meta, time()]);
     $id = (int)$pdo->lastInsertId();
     $pdo->prepare('UPDATE chat_members SET last_read = ? WHERE chat_id = ? AND user_id = ?')->execute([$id, $chatId, $userId]);
-    $stmt = $pdo->prepare('SELECT m.id, m.chat_id, m.user_id, m.body, m.kind, m.created_at,
+    $stmt = $pdo->prepare('SELECT m.id, m.chat_id, m.user_id, m.body, m.kind, m.meta, m.created_at,
         COALESCE(NULLIF(cm.nickname, \'\'), u.nickname) AS nickname, u.username, u.avatar
         FROM messages m JOIN users u ON u.id = m.user_id
         LEFT JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = m.user_id
@@ -849,7 +850,7 @@ function normalize_merged_item(array $item, int $depth): ?array
         $card = json_decode($body, true);
         $cardName = is_array($card) ? trim((string)($card['name'] ?? '')) : '';
         return ['name' => $name, 'uid' => $uid, 'avatar' => $avatar, 'kind' => 'text',
-            'body' => '[群名片] ' . ($cardName === '' ? '群聊' : $cardName), 'at' => $at];
+            'body' => $cardName === '' ? $body : '[群名片] ' . $cardName, 'at' => $at];
     }
 
     if (!in_array($kind, ['text', 'sticker', 'image', 'file', 'voice', 'csticker'], true)) {

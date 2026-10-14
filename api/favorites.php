@@ -59,7 +59,7 @@ if ($action === 'add') {
         $card = json_decode($body, true);
         $cardName = is_array($card) ? trim((string)($card['name'] ?? '')) : '';
         $kind = 'text';
-        $body = '[群名片] ' . ($cardName === '' ? '群聊' : $cardName);
+        $body = $cardName === '' ? $body : '[群名片] ' . $cardName;
     } else {
         $kind = 'text';
         if ($body === '') {

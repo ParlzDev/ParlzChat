@@ -224,6 +224,7 @@ function migrate(PDO $pdo): void
     )');
 
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages (chat_id, id)');
+    add_column_if_missing($pdo, 'messages', 'meta', 'TEXT NOT NULL DEFAULT \'\'');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_friends_user ON friends (user_id, status)');
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS rate_limits (

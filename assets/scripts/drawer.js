@@ -177,7 +177,7 @@ async function forwardToChats(chatIds) {
         });
         continue;
       }
-      if (message.kind !== 'text' && message.kind !== 'sticker' && message.kind !== 'csticker' && message.kind !== 'image' && message.kind !== 'quote' && message.kind !== 'file') {
+      if (message.kind !== 'text' && message.kind !== 'sticker' && message.kind !== 'csticker' && message.kind !== 'image' && message.kind !== 'quote' && message.kind !== 'file' && message.kind !== 'groupcard') {
         continue;
       }
       items.push({
@@ -214,11 +214,11 @@ async function forwardToChats(chatIds) {
       }
     } else {
       for (const message of targets) {
-        if (message.kind !== 'text' && message.kind !== 'sticker' && message.kind !== 'csticker' && message.kind !== 'image' && message.kind !== 'merged' && message.kind !== 'quote' && message.kind !== 'file') {
+        if (message.kind !== 'text' && message.kind !== 'sticker' && message.kind !== 'csticker' && message.kind !== 'image' && message.kind !== 'merged' && message.kind !== 'quote' && message.kind !== 'file' && message.kind !== 'groupcard') {
           continue;
         }
         try {
-          const res = await apiPost('api/messages.php', { chat_id: chatId, body: message.body, kind: message.kind });
+          const res = await apiPost('api/messages.php', { chat_id: chatId, body: message.body, kind: message.kind, meta: message.meta ?? '' });
           count++;
           if (chatId === active) {
             messages.merge([res.message]);

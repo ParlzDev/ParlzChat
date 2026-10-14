@@ -191,7 +191,7 @@ function mergedCard(message) {
 function groupCard(message) {
   let raw = null;
   try {
-    raw = JSON.parse(String(message.body ?? ''));
+    raw = JSON.parse(String(message.meta || message.body || ''));
   } catch (error) {
     raw = null;
   }

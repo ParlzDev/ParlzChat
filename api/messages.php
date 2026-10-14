@@ -90,6 +90,7 @@ if (!in_array($kind, ['text', 'sticker', 'image', 'merged', 'quote', 'file', 'vo
     $kind = 'text';
 }
 $body = trim((string)($data['body'] ?? ''));
+$meta = '';
 if ($kind === 'sticker') {
     if (!in_array($body, PARLZ_STICKERS, true)) {
         fail('未知的表情');
@@ -153,8 +154,9 @@ if ($kind === 'sticker') {
         fail('聊天记录太长，请少选几条');
     }
 } elseif ($kind === 'groupcard') {
-    $cardIn = json_decode($body, true);
-    $groupId = is_array($cardIn) ? (int)($cardIn['chat_id'] ?? 0) : (int)preg_replace('/\D/', '', $body);
+    $raw = trim((string)($data['meta'] ?? '')) !== '' ? (string)$data['meta'] : $body;
+    $cardIn = json_decode($raw, true);
+    $groupId = is_array($cardIn) ? (int)($cardIn['chat_id'] ?? 0) : (int)preg_replace('/\D/', '', $raw);
     $card = db()->prepare('SELECT id, name, avatar, type FROM chats WHERE id = ?');
     $card->execute([$groupId]);
     $group = $card->fetch();
@@ -168,13 +170,14 @@ if ($kind === 'sticker') {
     }
     $count = db()->prepare('SELECT COUNT(*) FROM chat_members WHERE chat_id = ?');
     $count->execute([$groupId]);
-    $body = (string)json_encode([
+    $meta = (string)json_encode([
         'chat_id' => $groupId,
         'uid' => group_uid($groupId),
         'name' => (string)$group['name'],
         'avatar' => (string)$group['avatar'],
         'members' => (int)$count->fetchColumn(),
     ], JSON_UNESCAPED_UNICODE);
+    $body = '[群名片] ' . (string)$group['name'];
 } else {
     if ($body === '') {
         fail('消息不能为空');
@@ -183,7 +186,7 @@ if ($kind === 'sticker') {
         fail('消息不能超过 ' . PARLZ_MSG_MAX . ' 个字符');
     }
 }
-$message = push_message($chatId, $uid, $body, $kind);
+$message = push_message($chatId, $uid, $body, $kind, $meta);
 mark_mentions($chatId, $uid, $kind, $body);
 away_autoreply($chatId, $uid);
 json_out(['ok' => true, 'message' => $message]);
