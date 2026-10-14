@@ -845,6 +845,13 @@ function normalize_merged_item(array $item, int $depth): ?array
         return ['name' => $name, 'uid' => $uid, 'avatar' => $avatar, 'kind' => 'quote', 'body' => $normalized, 'at' => $at];
     }
 
+    if ($kind === 'groupcard') {
+        $card = json_decode($body, true);
+        $cardName = is_array($card) ? trim((string)($card['name'] ?? '')) : '';
+        return ['name' => $name, 'uid' => $uid, 'avatar' => $avatar, 'kind' => 'text',
+            'body' => '[群名片] ' . ($cardName === '' ? '群聊' : $cardName), 'at' => $at];
+    }
+
     if (!in_array($kind, ['text', 'sticker', 'image', 'file', 'voice', 'csticker'], true)) {
         $kind = 'text';
     }

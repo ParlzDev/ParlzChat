@@ -888,6 +888,70 @@
   font-size: 11px;
 }
 
+.group-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  corner-shape: superellipse(2.4);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms linear, border-color 120ms linear;
+}
+
+.group-card:hover {
+  background: var(--surface-2);
+  border-color: var(--green);
+}
+
+.group-card-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group-card-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.group-card-sub {
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.group-card-tag {
+  flex: none;
+  color: var(--green-ink);
+  font-size: 11px;
+}
+
+.group-card-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .mw-body {
   flex: 1;
   min-height: 0;

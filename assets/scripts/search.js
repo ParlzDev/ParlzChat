@@ -17,6 +17,7 @@ const KIND_LABEL = {
   call: '[通话]',
   quote: '',
   merged: '[聊天记录]',
+  groupcard: '[群名片]',
   poke: '[戳一戳]',
 };
 

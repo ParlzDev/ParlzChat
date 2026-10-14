@@ -1,5 +1,5 @@
 import { state, on, totalUnread } from './state.js';
-import { $, esc, initials, skinFor, avatarUrl, toast, copyText, copyImage, uidName, uidUserId, slideIn } from './util.js';
+import { $, esc, initials, skinFor, avatarUrl, toast, copyText, copyImage, uidName, uidUserId, uidGroupId, slideIn } from './util.js';
 import { apiPost } from './api.js';
 import { icon } from './icons.js';
 import * as router from './router.js';
@@ -181,7 +181,14 @@ async function openByUid(rawUid) {
   }
   const userId = uidUserId(uid);
   if (userId === 0) {
-    toast('没有找到 UID ' + uid + ' 对应的会话', true);
+    const groupId = uidGroupId(uid);
+    if (groupId === 0) {
+      toast('没有找到 UID ' + uid + ' 对应的会话', true);
+      return;
+    }
+    import('./drawer.js')
+      .then(({ openGroupCard }) => openGroupCard(groupId))
+      .catch(() => toast('打不开这个群', true));
     return;
   }
   try {

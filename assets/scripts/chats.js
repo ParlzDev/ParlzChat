@@ -41,7 +41,9 @@ function previewOf(chat) {
           ? '[语音]'
           : chat.last.kind === 'merged'
             ? '[聊天记录]'
-            : chat.last.kind === 'quote'
+            : chat.last.kind === 'groupcard'
+              ? '[群名片]'
+              : chat.last.kind === 'quote'
               ? quoteLine(chat.last.body)
               : (chat.last.body.length > 46 ? chat.last.body.slice(0, 46) + '…' : chat.last.body);
   if (chat.type === 'group' && chat.last.user_id !== (state.user ? state.user.id : 0)) {

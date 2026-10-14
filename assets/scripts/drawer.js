@@ -12,6 +12,7 @@ let bodyNode = null;
 let pendingForward = [];
 let forwardMode = 'single';
 let forwardPicked = new Set();
+let cardPicked = new Set();
 let currentGroup = null;
 
 export function open(title, html) {
@@ -386,6 +387,26 @@ function renderGroupInfo(group) {
       : '<div class="form-actions drawer-actions"><button type="button" class="btn" data-act="act-leave" data-id="' + group.id + '" data-label="退出群聊">退出群聊</button></div>'));
 }
 
+function cardPickerHtml(group) {
+  const rows = state.chats.map((chat) => {
+    const on = cardPicked.has(chat.id);
+    return '<div class="row forward-row' + (on ? ' is-picked' : '') + '" data-act="act-card-pick" data-id="' + chat.id + '">' +
+      avatarHtml({ id: chat.type === 'dm' ? chat.avatar_user : chat.id, nickname: chat.title, avatar: chat.avatar }, 'avatar-sm') +
+      '<span class="row-main"><span class="row-name">' + esc(chat.title) + '</span>' +
+      '<span class="row-sub mono">' + esc(chat.uid ?? '') + '</span></span>' +
+      '<span class="row-actions">' + (on
+        ? '<span class="pending-tag pick-on">已选</span>'
+        : '<span class="pending-tag">' + (chat.type === 'group' ? '群聊' : '私聊') + '</span>') + '</span></div>';
+  }).join('');
+  return '<h3 class="section-title">发到会话 · 已选 ' + cardPicked.size + '</h3>' +
+    '<p class="danger-note">对方收到一张群名片，点卡片就能进群或申请加入（是否要审批按这个群的加群方式）</p>' +
+    (rows === '' ? '<p class="empty-note">还没有会话</p>' : rows) +
+    '<div class="form-actions drawer-actions">' +
+      '<button type="button" class="btn btn-sm btn-primary" data-act="act-card-send" data-id="' + group.id + '"' +
+      (cardPicked.size === 0 ? ' disabled' : '') + '>发送群名片到 ' + cardPicked.size + ' 个会话</button>' +
+    '</div>';
+}
+
 function openGroupShare(group) {
   const url = window.location.origin + '/index.php?chat&uid=' + encodeURIComponent(group.uid ?? '');
   open('分享群聊',
@@ -399,9 +420,71 @@ function openGroupShare(group) {
       '<span class="uid-row"><span class="share-url mono">' + esc(url) + '</span>' +
       '<button type="button" class="btn btn-sm" data-copy="' + esc(url) + '">复制</button></span></div>' +
       '<p class="setting-desc">让对方用「扫一扫」扫这个码，或打开下面的链接进群</p>' +
-      '<div class="form-actions"><button type="button" class="btn btn-sm" data-act="act-back-info">' + icon('back') + ' 返回群信息</button></div>' +
-    '</div>');
+    '</div>' +
+    cardPickerHtml(group) +
+    '<div class="form-actions"><button type="button" class="btn btn-sm" data-act="act-back-info">' + icon('back') + ' 返回群信息</button></div>');
   qrMount($('#share-qr-host'), String(group.uid ?? ''), 340);
+}
+
+async function sendGroupCard(groupId, chatIds) {
+  const sent = [];
+  for (const chatId of chatIds) {
+    try {
+      await apiPost('api/messages.php', { action: 'send', chat_id: chatId, kind: 'groupcard', body: String(groupId) });
+      sent.push(chatId);
+    } catch (error) {
+      toast(error.message, true);
+      return;
+    }
+  }
+  cardPicked = new Set();
+  await chats.refresh();
+  toast('群名片已发到 ' + sent.length + ' 个会话');
+  if (currentGroup !== null) {
+    renderGroupInfo(currentGroup);
+  } else {
+    close();
+  }
+}
+
+export async function openGroupCard(chatId) {
+  open('群名片', loadingHtml());
+  try {
+    const res = await apiGet('api/groups.php', { action: 'card', chat_id: chatId });
+    const card = res.card;
+    const modeNote = card.is_member
+      ? '你已经在这个群里'
+      : card.pending
+        ? '你的加入申请正在等待群主/管理员审批'
+        : card.join_mode === 'open'
+          ? '这个群允许直接加入'
+          : card.join_mode === 'none'
+            ? '这个群不允许加入'
+            : '加入这个群需要群主/管理员审批';
+    const action = card.is_member
+      ? '<button type="button" class="btn btn-primary" data-act="act-card-open" data-id="' + card.chat_id + '">进入群聊</button>'
+      : card.pending
+        ? '<span class="pending-tag">待审批</span>'
+        : card.join_mode === 'none'
+          ? '<button type="button" class="btn" disabled>不允许加入</button>'
+          : '<button type="button" class="btn btn-primary" data-act="act-card-join" data-id="' + card.chat_id + '">' +
+            (card.join_mode === 'open' ? '加入群聊' : '申请加入') + '</button>';
+    open('群名片',
+      '<div class="group-card-view">' +
+        '<div class="group-card-top">' +
+          avatarHtml({ id: card.chat_id, nickname: card.name, avatar: card.avatar }, 'avatar-lg') +
+          '<div><div class="profile-name">' + esc(card.name) + '</div>' +
+          '<div class="profile-sub mono">' + esc(card.uid) + ' · ' + card.members + ' 人</div>' +
+          (card.owner_name === '' ? '' : '<div class="profile-sub">群主：' + esc(card.owner_name) + '</div>') +
+          '</div></div>' +
+        '<p class="setting-desc">' + esc(modeNote) + '</p>' +
+        '<div class="form-actions drawer-actions">' + action +
+        '<button type="button" class="btn btn-sm" data-copy="' + esc(card.uid) + '">复制群号</button>' +
+        '<button type="button" class="btn btn-sm" data-act="act-card-close">关闭</button></div>' +
+      '</div>');
+  } catch (error) {
+    open('群名片', '<p class="empty-note">' + esc(error.message) + '</p>');
+  }
 }
 
 export async function openFavorites() {
@@ -494,8 +577,34 @@ export async function init() {
       }
     } else if (act === 'act-share') {
       if (currentGroup !== null) {
+        cardPicked = new Set();
         openGroupShare(currentGroup);
       }
+    } else if (act === 'act-card-pick') {
+      if (currentGroup !== null) {
+        if (cardPicked.has(id)) {
+          cardPicked.delete(id);
+        } else {
+          cardPicked.add(id);
+        }
+        openGroupShare(currentGroup);
+      }
+    } else if (act === 'act-card-send') {
+      if (cardPicked.size > 0) {
+        sendGroupCard(Number(target.dataset.id), Array.from(cardPicked));
+      }
+    } else if (act === 'act-card-open') {
+      close();
+      emit('open-chat', id);
+    } else if (act === 'act-card-join') {
+      import('./scanner.js')
+        .then(({ joinGroup }) => {
+          close();
+          joinGroup(id);
+        })
+        .catch(() => toast('加群组件没加载出来', true));
+    } else if (act === 'act-card-close') {
+      close();
     } else if (act === 'act-back-info') {
       if (currentGroup !== null) {
         renderGroupInfo(currentGroup);

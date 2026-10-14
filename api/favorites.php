@@ -55,6 +55,11 @@ if ($action === 'add') {
         if (preg_match('/^f\d{1,12}-[a-f0-9]{16}(\.[a-z0-9]{1,10})?$/', $fname) !== 1 || !is_file(PARLZ_UPLOAD_DIR . '/' . $fname)) {
             fail('文件不存在或格式不正确');
         }
+    } elseif ($kind === 'groupcard') {
+        $card = json_decode($body, true);
+        $cardName = is_array($card) ? trim((string)($card['name'] ?? '')) : '';
+        $kind = 'text';
+        $body = '[群名片] ' . ($cardName === '' ? '群聊' : $cardName);
     } else {
         $kind = 'text';
         if ($body === '') {

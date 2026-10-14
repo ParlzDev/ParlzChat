@@ -282,6 +282,11 @@ export function uidUserId(uid) {
   return match === null ? 0 : Number(match[1]);
 }
 
+export function uidGroupId(uid) {
+  const match = /^A0*(\d{1,12})$/.exec(uidName(uid));
+  return match === null ? 0 : Number(match[1]);
+}
+
 export function copyText(text) {
   const value = String(text ?? '');
   if (value === '') {

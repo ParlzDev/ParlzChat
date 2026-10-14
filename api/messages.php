@@ -86,7 +86,7 @@ if ($muteState !== null && $muteState['muted_until'] > time()) {
     fail('你已被禁言，约剩 ' . $left . ' 分钟', 403);
 }
 $kind = (string)($data['kind'] ?? 'text');
-if (!in_array($kind, ['text', 'sticker', 'image', 'merged', 'quote', 'file', 'voice', 'csticker'], true)) {
+if (!in_array($kind, ['text', 'sticker', 'image', 'merged', 'quote', 'file', 'voice', 'csticker', 'groupcard'], true)) {
     $kind = 'text';
 }
 $body = trim((string)($data['body'] ?? ''));
@@ -152,6 +152,29 @@ if ($kind === 'sticker') {
     if (strlen($body) > 32768) {
         fail('聊天记录太长，请少选几条');
     }
+} elseif ($kind === 'groupcard') {
+    $cardIn = json_decode($body, true);
+    $groupId = is_array($cardIn) ? (int)($cardIn['chat_id'] ?? 0) : (int)preg_replace('/\D/', '', $body);
+    $card = db()->prepare('SELECT id, name, avatar, type FROM chats WHERE id = ?');
+    $card->execute([$groupId]);
+    $group = $card->fetch();
+    if ($group === false || (string)$group['type'] !== 'group') {
+        fail('这个群不存在', 404);
+    }
+    $inside = db()->prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?');
+    $inside->execute([$groupId, $uid]);
+    if ($inside->fetchColumn() === false) {
+        fail('你不在那个群里，分享不了它的名片', 403);
+    }
+    $count = db()->prepare('SELECT COUNT(*) FROM chat_members WHERE chat_id = ?');
+    $count->execute([$groupId]);
+    $body = (string)json_encode([
+        'chat_id' => $groupId,
+        'uid' => group_uid($groupId),
+        'name' => (string)$group['name'],
+        'avatar' => (string)$group['avatar'],
+        'members' => (int)$count->fetchColumn(),
+    ], JSON_UNESCAPED_UNICODE);
 } else {
     if ($body === '') {
         fail('消息不能为空');

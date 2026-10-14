@@ -3,7 +3,7 @@ import { $, esc, avatarHtml, fmtMsgTime, uploadUrl, uidUserId, toast, fmtSize, d
 import { apiGet, apiPost } from './api.js';
 import { stickerSvg } from './stickers.js';
 import { levelChips } from './level.js';
-import { renderBody, firstUrl, parseQuote, quotePreview, parseFile, mediaKind } from './richtext.js';
+import { renderBody, firstUrl, parseQuote, quotePreview, parseFile, mediaKind, parseGroupCard } from './richtext.js';
 import { parseRecord, openRecordFromBody } from './record.js';
 import { mediaUpgrade } from './media.js';
 import { icon } from './icons.js';
@@ -66,6 +66,9 @@ async function attachCard(host, url) {
 function mergedPreview(item) {
   if (item.kind === 'image' || item.kind === 'csticker') {
     return item.kind === 'csticker' ? '[表情]' : '[图片]';
+  }
+  if (item.kind === 'groupcard') {
+    return '[群名片]';
   }
   if (item.kind === 'sticker') {
     return '[表情]';
@@ -185,6 +188,19 @@ function mergedCard(message) {
     '</button>';
 }
 
+function groupCard(message) {
+  const data = parseGroupCard(message.body);
+  if (data === null) {
+    return '<div class="bubble">' + renderBody(message.body) + '</div>';
+  }
+  return '<div class="group-card" role="button" tabindex="0" data-group-card="' + data.chatId + '">' +
+    avatarHtml({ id: data.chatId, nickname: data.name, avatar: data.avatar }, 'avatar-sm') +
+    '<span class="group-card-main">' +
+    '<span class="group-card-name">' + esc(data.name) + '</span>' +
+    '<span class="group-card-sub mono">' + esc(data.uid) + ' · ' + data.members + ' 人</span></span>' +
+    '<span class="group-card-tag">群名片</span></div>';
+}
+
 function quoteNode(message, myNick) {
   const data = parseQuote(message.body);
   if (data === null) {
@@ -275,7 +291,9 @@ function messageNode(message) {
         ? '<div class="sticker-bubble is-custom"><img class="csticker-img" src="' + esc(uploadUrl(message.body)) + '" alt="表情" loading="lazy"></div>'
         : message.kind === 'merged'
         ? mergedCard(message)
-        : message.kind === 'quote'
+        : message.kind === 'groupcard'
+          ? groupCard(message)
+          : message.kind === 'quote'
           ? quoteNode(message, myNick)
           : message.kind === 'file'
             ? fileBubble(message, myNick)
@@ -608,6 +626,18 @@ export function init() {
       if (id > 0) {
         jumpTo(state.activeChat === null ? 0 : state.activeChat.id, id).catch(() => {});
       }
+      return;
+    }
+    const gcard = event.target.closest('[data-group-card]');
+    if (gcard !== null) {
+      const groupId = Number(gcard.dataset.groupCard);
+      if (chatById(groupId) !== null) {
+        emit('open-chat', groupId);
+        return;
+      }
+      import('./drawer.js')
+        .then(({ openGroupCard }) => openGroupCard(groupId))
+        .catch(() => toast('打不开这张群名片', true));
       return;
     }
     const card = event.target.closest('[data-merged]');

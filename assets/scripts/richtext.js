@@ -28,6 +28,24 @@ export function parseQuote(body) {
   return null;
 }
 
+export function parseGroupCard(body) {
+  try {
+    const parsed = JSON.parse(String(body ?? ''));
+    if (parsed && typeof parsed === 'object' && Number(parsed.chat_id) > 0 && typeof parsed.name === 'string') {
+      return {
+        chatId: Number(parsed.chat_id),
+        uid: String(parsed.uid ?? ''),
+        name: String(parsed.name),
+        avatar: String(parsed.avatar ?? ''),
+        members: Math.max(0, Number(parsed.members) || 0),
+      };
+    }
+  } catch (error) {
+    return null;
+  }
+  return null;
+}
+
 export function parseFile(body) {
   try {
     const parsed = JSON.parse(String(body ?? ''));
@@ -83,6 +101,14 @@ export function quotePreview(quote) {
   }
   if (kind === 'quote') {
     return '[引用]';
+  }
+  if (kind === 'groupcard') {
+    try {
+      const inner = JSON.parse(String(quote.body ?? ''));
+      return '[群名片] ' + String(inner.name ?? '');
+    } catch (error) {
+      return '[群名片]';
+    }
   }
   const text = String(quote.body ?? '');
   return text.length > 60 ? text.slice(0, 60) + '…' : text;

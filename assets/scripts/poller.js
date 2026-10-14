@@ -1,5 +1,6 @@
 import { state, emit, chatById, lastMessageId, totalUnread } from './state.js';
 import { apiGet } from './api.js';
+import { parseGroupCard } from './richtext.js';
 import { ping, systemNotify } from './notify.js';
 import * as messages from './messages.js';
 import * as chats from './chats.js';
@@ -44,8 +45,15 @@ function notifyPreview(message) {
           ? '[文件]'
           : kind === 'merged'
             ? '[聊天记录]'
-            : String(message.body ?? '').slice(0, 80);
+            : kind === 'groupcard'
+              ? groupCardLine(message.body)
+              : String(message.body ?? '').slice(0, 80);
   return name + '：' + body;
+}
+
+function groupCardLine(body) {
+  const data = parseGroupCard(body);
+  return data === null ? '[群名片]' : '[群名片] ' + data.name;
 }
 
 function applyChats(list) {

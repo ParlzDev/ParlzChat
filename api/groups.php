@@ -95,6 +95,37 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         ]);
     }
 
+    if ($action === 'card') {
+        $chatId = (int)($_GET['chat_id'] ?? 0);
+        $stmt = $pdo->prepare('SELECT id, name, avatar, type, join_mode, owner_id, is_default FROM chats WHERE id = ?');
+        $stmt->execute([$chatId]);
+        $row = $stmt->fetch();
+        if ($row === false || (string)$row['type'] !== 'group') {
+            fail('这个群不存在或已经解散', 404);
+        }
+        $count = $pdo->prepare('SELECT COUNT(*) FROM chat_members WHERE chat_id = ?');
+        $count->execute([$chatId]);
+        $mine = $pdo->prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?');
+        $mine->execute([$chatId, $uid]);
+        $pending = $pdo->prepare('SELECT 1 FROM group_invites WHERE chat_id = ? AND invitee_id = ? AND status = \'pending\'');
+        $pending->execute([$chatId, $uid]);
+        $owner = $pdo->prepare('SELECT nickname FROM users WHERE id = ?');
+        $owner->execute([(int)$row['owner_id']]);
+        $ownerRow = $owner->fetch();
+        json_out(['ok' => true, 'card' => [
+            'chat_id' => $chatId,
+            'uid' => group_uid($chatId),
+            'name' => (string)$row['name'],
+            'avatar' => (string)$row['avatar'],
+            'members' => (int)$count->fetchColumn(),
+            'join_mode' => (string)($row['join_mode'] ?? 'verify'),
+            'is_member' => $mine->fetchColumn() !== false,
+            'pending' => $pending->fetchColumn() !== false,
+            'owner_name' => $ownerRow === false ? '' : (string)$ownerRow['nickname'],
+            'is_default' => (bool)$row['is_default'],
+        ]]);
+    }
+
     $stmt = $pdo->prepare('SELECT c.id, c.name, c.avatar, c.owner_id, c.is_default, c.created_at,
             (SELECT COUNT(*) FROM chat_members x WHERE x.chat_id = c.id) AS members
         FROM chats c JOIN chat_members cm ON cm.chat_id = c.id AND cm.user_id = ?
