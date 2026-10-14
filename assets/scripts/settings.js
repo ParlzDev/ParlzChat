@@ -227,7 +227,7 @@ function body() {
       '<h3 class="section-title">账号</h3>' +
       '<div class="setting-row"><div><div class="setting-title">我的邮箱</div>' +
       '<div class="setting-desc" id="my-email">' + esc((user.email ?? '') === '' ? '还没绑定邮箱' : String(user.email)) + '</div></div>' +
-      '<button type="button" class="btn btn-sm" id="open-email">' + (((user.email ?? '') === '') ? '绑定' : '修改') + '</button></div>' + +
+      '<button type="button" class="btn btn-sm" id="open-email">' + (((user.email ?? '') === '') ? '绑定' : '修改') + '</button></div>' +
       '<div class="setting-row"><span class="setting-title">我的 UID</span>' +
       '<span class="uid-row"><span class="uid mono">' + esc(user.uid ?? '') + '</span>' +
       '<button type="button" class="btn btn-sm" data-copy="' + esc(user.uid ?? '') + '">复制</button></span></div>' +
