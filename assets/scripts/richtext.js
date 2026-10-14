@@ -28,24 +28,6 @@ export function parseQuote(body) {
   return null;
 }
 
-export function parseGroupCard(body) {
-  try {
-    const parsed = JSON.parse(String(body ?? ''));
-    if (parsed && typeof parsed === 'object' && Number(parsed.chat_id) > 0 && typeof parsed.name === 'string') {
-      return {
-        chatId: Number(parsed.chat_id),
-        uid: String(parsed.uid ?? ''),
-        name: String(parsed.name),
-        avatar: String(parsed.avatar ?? ''),
-        members: Math.max(0, Number(parsed.members) || 0),
-      };
-    }
-  } catch (error) {
-    return null;
-  }
-  return null;
-}
-
 export function parseFile(body) {
   try {
     const parsed = JSON.parse(String(body ?? ''));

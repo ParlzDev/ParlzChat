@@ -3,7 +3,7 @@ import { $, esc, avatarHtml, fmtMsgTime, uploadUrl, uidUserId, toast, fmtSize, d
 import { apiGet, apiPost } from './api.js';
 import { stickerSvg } from './stickers.js';
 import { levelChips } from './level.js';
-import { renderBody, firstUrl, parseQuote, quotePreview, parseFile, mediaKind, parseGroupCard } from './richtext.js';
+import { renderBody, firstUrl, parseQuote, quotePreview, parseFile, mediaKind } from './richtext.js';
 import { parseRecord, openRecordFromBody } from './record.js';
 import { mediaUpgrade } from './media.js';
 import { icon } from './icons.js';
@@ -189,10 +189,22 @@ function mergedCard(message) {
 }
 
 function groupCard(message) {
-  const data = parseGroupCard(message.body);
-  if (data === null) {
+  let raw = null;
+  try {
+    raw = JSON.parse(String(message.body ?? ''));
+  } catch (error) {
+    raw = null;
+  }
+  if (raw === null || typeof raw !== 'object' || Number(raw.chat_id) <= 0 || typeof raw.name !== 'string') {
     return '<div class="bubble">' + renderBody(message.body) + '</div>';
   }
+  const data = {
+    chatId: Number(raw.chat_id),
+    uid: String(raw.uid ?? ''),
+    name: raw.name,
+    avatar: String(raw.avatar ?? ''),
+    members: Math.max(0, Number(raw.members) || 0),
+  };
   return '<div class="group-card" role="button" tabindex="0" data-group-card="' + data.chatId + '">' +
     avatarHtml({ id: data.chatId, nickname: data.name, avatar: data.avatar }, 'avatar-sm') +
     '<span class="group-card-main">' +
@@ -636,7 +648,13 @@ export function init() {
         return;
       }
       import('./drawer.js')
-        .then(({ openGroupCard }) => openGroupCard(groupId))
+        .then((mod) => {
+          if (typeof mod.openGroupCard !== 'function') {
+            toast('客户端缓存还没更新，强刷一次再点这张群名片', true);
+            return;
+          }
+          mod.openGroupCard(groupId);
+        })
         .catch(() => toast('打不开这张群名片', true));
       return;
     }
