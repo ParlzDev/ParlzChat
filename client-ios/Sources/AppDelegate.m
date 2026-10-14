@@ -11,14 +11,16 @@
     return YES;
 }
 
-- (void)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
     if (![url.scheme.lowercaseString isEqualToString:@"pz"]) {
-        return;
+        return NO;
     }
     UIViewController *root = self.window.rootViewController;
     if ([root isKindOfClass:[RootViewController class]]) {
         [(RootViewController *)root handlePzLink:url.absoluteString];
+        return YES;
     }
+    return NO;
 }
 
 @end

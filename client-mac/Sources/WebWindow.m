@@ -13,6 +13,7 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 @property (nonatomic, strong) NSFileHandle *saveHandle;
 @property (nonatomic, copy) NSString *pendingPz;
 @property (nonatomic, assign) BOOL pageReady;
+@property (nonatomic, assign) NSInteger attentionRequest;
 
 @end
 
@@ -138,17 +139,21 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     NSString *title = count > 0 ? [NSString stringWithFormat:@"(%ld) Parlz", (long) count] : @"Parlz";
     if (self.window != nil) {
         [self.window setTitle:title];
-        [self.window setRequiresUserActionToDemandAttention:YES];
-        if (count > 0) {
-            [self.window demandUserAttention:NSInformationalRequest];
+    }
+    if (count > 0) {
+        if (self.attentionRequest == 0) {
+            self.attentionRequest = [NSApp requestUserAttention:NSInformationalRequest];
         }
+    } else if (self.attentionRequest != 0) {
+        [NSApp cancelUserAttentionRequest:self.attentionRequest];
+        self.attentionRequest = 0;
     }
 }
 
 - (void)postNotice:(NSString *)title body:(NSString *)body count:(NSInteger)count {
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
-    [center getNotificationAuthorizationStatusWithCompletionHandler:^(UNAuthorizationStatus status) {
-        if (status != UNAuthorizationStatusAuthorized) {
+    [center getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
+        if (settings.authorizationStatus != UNAuthorizationStatusAuthorized) {
             return;
         }
         UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];

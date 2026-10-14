@@ -141,8 +141,8 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 
 - (void)postNotice:(NSString *)title body:(NSString *)body count:(NSInteger)count {
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
-    [center getNotificationAuthorizationStatusWithCompletionHandler:^(UNAuthorizationStatus status) {
-        if (status != UNAuthorizationStatusAuthorized) {
+    [center getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
+        if (settings.authorizationStatus != UNAuthorizationStatusAuthorized) {
             return;
         }
         UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
