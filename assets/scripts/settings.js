@@ -424,7 +424,12 @@ function wire() {
         navigator.registerProtocolHandler('pz', target, 'Parlz');
         toast('已请求关联 pz: 链接，浏览器会弹确认框');
       } catch (error) {
-        toast('关联失败：' + error.message, true);
+        try {
+          navigator.registerProtocolHandler('web+pz', window.location.origin + '/index.php?pz=%s', 'Parlz');
+          toast('这个浏览器只认 web+ 开头的协议，已按 web+pz 关联；pz: 链接请用客户端打开', true);
+        } catch (second) {
+          toast('这个浏览器不允许关联 pz:（Chrome/Edge 只支持 web+ 协议），装个客户端或用 Firefox 才能接管 pz: 链接', true);
+        }
       }
     });
   }

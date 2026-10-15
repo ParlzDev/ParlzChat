@@ -123,7 +123,7 @@ export function renderBody(text, myNickname = '') {
         html += esc(match[4]);
       } else {
         const url = pzHttpUrl(command);
-        html += '<a class="link-out" href="' + esc(url) + '">' + esc(url) + '</a>' + esc(match[4].slice(command.length));
+        html += '<a class="link-out link-pz" href="' + esc(url) + '">' + esc(command) + '</a>' + esc(match[4].slice(command.length));
       }
     }
     last = match.index + match[0].length;
