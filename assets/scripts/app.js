@@ -1,4 +1,4 @@
-import { state, on, totalUnread } from './state.js';
+import { state, on, emit, totalUnread } from './state.js';
 import { $, esc, initials, skinFor, avatarUrl, toast, copyText, copyImage, uidName, uidUserId, slideIn } from './util.js';
 import { apiPost } from './api.js';
 import { icon } from './icons.js';
@@ -615,6 +615,59 @@ function wire() {
     }
     chats.open(chatId);
   });
+
+  if (typeof window.chrome?.webview?.addEventListener === 'function') {
+    window.chrome.webview.addEventListener('message', (event) => {
+      const data = event.data;
+      if (data !== null && typeof data === 'object' && data.cmd === 'open-chat' && Number(data.id) > 0) {
+        emit('open-chat', Number(data.id));
+      }
+    });
+  }
+
+  window.ParlzOpenChat = (chatId) => {
+    const id = Number(chatId);
+    if (id > 0) {
+      emit('open-chat', id);
+    }
+  };
+
+  let pushSynced = '';
+  const readPushToken = () => {
+    try {
+      return window.localStorage.getItem('parlz:push-token') || '';
+    } catch (error) {
+      return '';
+    }
+  };
+  const syncPushToken = () => {
+    const token = readPushToken();
+    const id = state.user === null ? 0 : Number(state.user.id);
+    if (token === '' || id <= 0) {
+      return;
+    }
+    const pair = id + ':' + token;
+    if (pushSynced === pair) {
+      return;
+    }
+    pushSynced = pair;
+    apiPost('api/push.php', { action: 'register', token }).catch(() => {
+      pushSynced = '';
+    });
+  };
+  window.ParlzPushToken = (raw) => {
+    const value = String(raw ?? '').replace(/[^a-f0-9]/gi, '').toLowerCase();
+    if (value.length < 32) {
+      return;
+    }
+    try {
+      window.localStorage.setItem('parlz:push-token', value);
+    } catch (error) {
+      return;
+    }
+    syncPushToken();
+  };
+  window.setInterval(syncPushToken, 20000);
 
   const safeInit = (name, run) => {
     try {

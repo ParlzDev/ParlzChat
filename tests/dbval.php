@@ -59,6 +59,16 @@ if ($name === 'rate_dump') {
     exit;
 }
 
+if ($name === 'count_table') {
+    $allowed = ['users', 'messages', 'chats', 'devices', 'posts', 'push_tokens'];
+    if (!in_array($arg, $allowed, true)) {
+        echo 'denied' . PHP_EOL;
+        exit;
+    }
+    echo (string)(int)db()->query('SELECT COUNT(*) FROM ' . $arg)->fetchColumn() . PHP_EOL;
+    exit;
+}
+
 if ($name === 'list_users') {
     foreach (db()->query('SELECT id, username FROM users ORDER BY id') as $row) {
         echo (int)$row['id'] . ' ' . $row['username'] . PHP_EOL;

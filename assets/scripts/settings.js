@@ -450,18 +450,30 @@ function wire() {
         const total = result.types.host + result.types.srflx + result.types.relay;
         const verdict = relay.ok
           ? '中继可用：即使打不通也能通过服务器转发'
-          : result.types.srflx > 0
-            ? '中继不可达（' + relay.url + '），只能靠 NAT 打洞，严格 NAT 下会连不上'
-            : '中继不可达（' + relay.url + '）且没有公网地址，跨网络通话必失败';
+          : relay.url === ''
+            ? '服务器没下发中继地址，只能靠 NAT 打洞，严格 NAT 下会连不上'
+            : result.types.srflx > 0
+              ? '中继不可达（' + relay.url + '），只能靠 NAT 打洞，严格 NAT 下会连不上'
+              : '中继不可达（' + relay.url + '）且没有公网地址，跨网络通话必失败';
         if (out !== null) {
+          const extra = result.details.concat(relay.errors ?? []);
           out.innerHTML =
-            '<div class="setting-row"><span class="setting-title">host / srflx / relay</span>' +
-            '<span class="mono">' + result.types.host + ' / ' + result.types.srflx + ' / ' + result.types.relay + '</span></div>' +
-            '<div class="setting-row"><span class="setting-title">中继 ' + (relay.ok ? '通' : '不通') + '</span>' +
-            '<span class="mono">' + esc(relay.url || '未配置') + '</span></div>' +
-            '<p class="setting-desc">' + (total === 0 ? '没有收集到任何候选，检查网络后重试' : esc(verdict)) + '</p>' +
-            ((relay.errors ?? []).length > 0 ? '<p class="setting-desc device-ua mono">' + esc(relay.errors.slice(0, 2).join('　')) + '</p>' : '') +
-            (result.details.length > 0 ? '<p class="setting-desc device-ua mono">' + esc(result.details.join('　')) + '</p>' : '');
+            '<div class="setting-row"><span class="check-verdict' + (relay.ok ? '' : ' dim') + '">中继 ' + (relay.ok ? '可用' : '不可达') + '</span>' +
+            '<span class="mono">host ' + result.types.host + ' · srflx ' + result.types.srflx + ' · relay ' + result.types.relay + '</span></div>' +
+            '<p class="setting-desc">' + esc(total === 0 ? '没有收集到任何候选，检查网络后重试' : verdict) + '</p>' +
+            (extra.length === 0 ? '' :
+              '<div class="form-actions setting-actions"><button type="button" class="btn btn-sm" data-act="st-check-toggle">查看明细 ' + extra.length + '</button></div>' +
+              '<p class="setting-desc check-detail mono" id="call-check-detail" hidden>' + esc(extra.join('　')) + '</p>');
+          const toggle = out.querySelector('[data-act="st-check-toggle"]');
+          if (toggle !== null) {
+            toggle.addEventListener('click', () => {
+              const detail = out.querySelector('#call-check-detail');
+              if (detail !== null) {
+                detail.hidden = !detail.hidden;
+                toggle.textContent = detail.hidden ? '查看明细 ' + extra.length : '收起明细';
+              }
+            });
+          }
         }
       } catch (error) {
         if (out !== null) {

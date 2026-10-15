@@ -45,9 +45,9 @@ function db(): PDO
     $pdo->exec('PRAGMA synchronous = NORMAL');
 
     $stamp = (string)@md5_file(__DIR__ . '/db.php');
-    $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts', 'stt_texts', 'email_codes', 'group_call_states', 'group_call_members', 'group_call_signals')")->fetchColumn();
+    $tables = (int)@$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('rate_limits', 'messages_fts', 'stt_texts', 'email_codes', 'group_call_states', 'group_call_members', 'group_call_signals', 'push_tokens')")->fetchColumn();
     $ready = table_has_column($pdo, 'users', 'email') && table_has_column($pdo, 'messages', 'meta');
-    if ($tables < 7 || !$ready || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
+    if ($tables < 8 || !$ready || $stamp === '' || @file_get_contents(PARLZ_DATA . '/schema.stamp') !== $stamp) {
         migrate($pdo);
         @file_put_contents(PARLZ_DATA . '/schema.stamp', $stamp);
     }
@@ -242,6 +242,15 @@ function migrate(PDO $pdo): void
         key TEXT PRIMARY KEY,
         text TEXT NOT NULL,
         created_at INTEGER NOT NULL
+    )');
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS push_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        platform TEXT NOT NULL DEFAULT \'ios\',
+        token TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
     )');
 
     $pdo->exec('CREATE TABLE IF NOT EXISTS email_codes (

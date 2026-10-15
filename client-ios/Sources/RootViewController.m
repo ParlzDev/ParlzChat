@@ -17,6 +17,7 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 @property (nonatomic, strong) NSFileHandle *saveHandle;
 @property (nonatomic, weak) WKDownload *download;
 @property (nonatomic, copy) NSString *pendingPz;
+@property (nonatomic, assign) NSInteger pendingChat;
 @property (nonatomic, assign) BOOL pageReady;
 @property (nonatomic, assign) BOOL cacheChecked;
 
@@ -42,6 +43,8 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 - (void)viewDidLoad {
     [super viewDidLoad];
 
+    [[UNUserNotificationCenter currentNotificationCenter] setDelegate:self];
+    [[UIApplication sharedApplication] registerForRemoteNotifications];
     [[UNUserNotificationCenter currentNotificationCenter]
         requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
                       completionHandler:^(BOOL granted, NSError *_Nullable error) {
@@ -89,6 +92,16 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
         NSString *link = self.pendingPz;
         self.pendingPz = nil;
         [self handlePzLink:link];
+    }
+    if (self.pendingChat > 0) {
+        NSInteger chatId = self.pendingChat;
+        self.pendingChat = 0;
+        [self openChat:chatId];
+    }
+    NSString *token = [[NSUserDefaults standardUserDefaults] stringForKey:@"parlz.pushToken"];
+    if (token.length >= 32) {
+        NSString *js = [NSString stringWithFormat:@"window.ParlzPushToken && window.ParlzPushToken(\"%@\");", token];
+        [self.web evaluateJavaScript:js completionHandler:nil];
     }
 }
 
@@ -162,7 +175,7 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     } else if ([cmd isEqualToString:@"server"]) {
         [self promptServer];
     } else if ([cmd isEqualToString:@"notify"]) {
-        [self postNotice:payload[@"title"] body:payload[@"body"] count:[payload[@"count"] integerValue]];
+        [self postNotice:payload[@"title"] body:payload[@"body"] count:[payload[@"count"] integerValue] chatId:[payload[@"chat_id"] integerValue]];
     } else if ([cmd isEqualToString:@"badge"]) {
         NSInteger count = [payload[@"count"] integerValue];
         if (count > 0) {
@@ -173,7 +186,7 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     }
 }
 
-- (void)postNotice:(NSString *)title body:(NSString *)body count:(NSInteger)count {
+- (void)postNotice:(NSString *)title body:(NSString *)body count:(NSInteger)count chatId:(NSInteger)chatId {
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     [center getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
         if (settings.authorizationStatus != UNAuthorizationStatusAuthorized) {
@@ -185,12 +198,57 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
         if (count > 0) {
             content.badge = @(count);
         }
+        if (chatId > 0) {
+            content.userInfo = @{ @"chat_id": @(chatId) };
+        }
         content.sound = [UNNotificationSound defaultSound];
         UNTimeIntervalNotificationTrigger *trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.1 repeats:NO];
         NSString *identifier = [NSString stringWithFormat:@"parlz-%.0f", [[NSDate date] timeIntervalSince1970] * 1000];
         UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:trigger];
         [center addNotificationRequest:request withCompletionHandler:nil];
     }];
+}
+
+- (void)pushTokenFromSystem:(NSString *)token {
+    NSString *clean = [[token lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (clean.length < 32) {
+        return;
+    }
+    [[NSUserDefaults standardUserDefaults] setObject:clean forKey:@"parlz.pushToken"];
+    NSString *js = [NSString stringWithFormat:@"window.ParlzPushToken && window.ParlzPushToken(\"%@\");", clean];
+    [self.web evaluateJavaScript:js completionHandler:nil];
+}
+
+- (void)openChat:(NSInteger)chatId {
+    if (chatId <= 0) {
+        return;
+    }
+    if (!self.pageReady || self.web == nil) {
+        self.pendingChat = chatId;
+        return;
+    }
+    self.pendingChat = 0;
+    NSString *js = [NSString stringWithFormat:@"window.ParlzOpenChat && window.ParlzOpenChat(%ld);", (long) chatId];
+    [self.web evaluateJavaScript:js completionHandler:nil];
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler {
+    (void) center;
+    (void) notification;
+    if (@available(iOS 14.0, *)) {
+        completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList | UNNotificationPresentationOptionSound);
+    } else {
+        completionHandler(UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionSound);
+    }
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center didReceiveNotificationResponse:(UNNotificationResponse *)response withCompletionHandler:(void (^)(void))completionHandler {
+    (void) center;
+    NSInteger chatId = [response.notification.request.content.userInfo[@"chat_id"] integerValue];
+    if (chatId > 0) {
+        [self openChat:chatId];
+    }
+    completionHandler();
 }
 
 - (void)beginSaveWithName:(NSString *)name mime:(NSString *)mime {

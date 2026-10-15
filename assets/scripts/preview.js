@@ -1,4 +1,4 @@
-import { esc, loadingHtml } from './util.js';
+import { esc, loadingHtml, toast } from './util.js';
 import { icon } from './icons.js';
 
 const OFFICE = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
@@ -188,6 +188,38 @@ export function openPreview(rawUrl, title) {
   return true;
 }
 
+function isSitePzLink(href) {
+  let url = null;
+  try {
+    url = new URL(String(href ?? ''), window.location.origin);
+  } catch (error) {
+    return false;
+  }
+  if (url.origin !== window.location.origin) {
+    return false;
+  }
+  return url.searchParams.get('pz') !== null || url.hash.indexOf('#pz:') === 0;
+}
+
+async function runSitePz(href) {
+  const mod = await import('./pz.js');
+  const target = mod.parsePz(href);
+  if (target === null) {
+    toast('这个 pz 链接认不出命令', true);
+    return;
+  }
+  if (target.cmd === 'login') {
+    const code = String(target.params.code ?? '').trim();
+    if (!/^[a-f0-9]{8,64}$/i.test(code)) {
+      toast('登录码不对', true);
+      return;
+    }
+    openPreview('embed.php?scan=' + encodeURIComponent(code), '登录确认');
+    return;
+  }
+  await mod.runPz(href);
+}
+
 export function init() {
   window.addEventListener('message', (event) => {
     if (event.origin !== window.location.origin) {
@@ -225,6 +257,12 @@ export function init() {
       return;
     }
     event.preventDefault();
+    if (isSitePzLink(href)) {
+      runSitePz(href).catch(() => {
+        toast('pz 链接打不开', true);
+      });
+      return;
+    }
     const label = link.querySelector('.link-card-title');
     openPreview(href, label !== null ? String(label.textContent ?? '') : String(link.textContent ?? ''));
   }, true);

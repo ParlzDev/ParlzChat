@@ -38,3 +38,8 @@ data/*.log
 data/*.lock
 data/schema.stamp
 data/*.sqlite
+data/*.json
+client-ios/dist/signing/
+client-ios/dist/
+*.p8
+AuthKey_*.p8

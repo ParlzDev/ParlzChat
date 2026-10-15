@@ -99,7 +99,7 @@ export function notifyTarget() {
   return nativeChannel();
 }
 
-export function systemNotify(title, body, count = 0) {
+export function systemNotify(title, body, count = 0, extra = null) {
   if (!notifyOn()) {
     return;
   }
@@ -116,11 +116,25 @@ export function systemNotify(title, body, count = 0) {
       return;
     }
     if (channel === 'windows') {
-      window.chrome.webview.postMessage({ cmd: 'notify', title: head, body: text, count: Math.max(0, count | 0) });
+      const payload = { cmd: 'notify', title: head, body: text, count: Math.max(0, count | 0) };
+      if (extra !== null && Number(extra.chatId) > 0) {
+        payload.chat_id = Number(extra.chatId);
+      }
+      if (extra !== null && typeof extra.avatar === 'string' && extra.avatar !== '') {
+        payload.avatar = extra.avatar;
+      }
+      window.chrome.webview.postMessage(payload);
       return;
     }
     if (channel === 'apple') {
-      window.webkit.messageHandlers.parlz.postMessage({ cmd: 'notify', title: head, body: text, count: Math.max(0, count | 0) });
+      const payload = { cmd: 'notify', title: head, body: text, count: Math.max(0, count | 0) };
+      if (extra !== null && Number(extra.chatId) > 0) {
+        payload.chat_id = Number(extra.chatId);
+      }
+      if (extra !== null && typeof extra.avatar === 'string' && extra.avatar !== '') {
+        payload.avatar = extra.avatar;
+      }
+      window.webkit.messageHandlers.parlz.postMessage(payload);
       return;
     }
   } catch (error) {

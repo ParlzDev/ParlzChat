@@ -1,6 +1,6 @@
 #import "WebWindow.h"
+#import "NoticePanel.h"
 #import <AVFoundation/AVFoundation.h>
-#import <UserNotifications/UserNotifications.h>
 
 static NSString *const kServerKey = @"parlz.server";
 static NSString *const kDefaultServer = @"https://chat.parlz.com";
@@ -12,6 +12,7 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
 @property (nonatomic, copy) NSString *savePath;
 @property (nonatomic, strong) NSFileHandle *saveHandle;
 @property (nonatomic, copy) NSString *pendingPz;
+@property (nonatomic, assign) NSInteger pendingChat;
 @property (nonatomic, assign) BOOL pageReady;
 @property (nonatomic, assign) NSInteger attentionRequest;
 
@@ -41,6 +42,11 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
         self.pendingPz = nil;
         [self handlePzLink:link];
     }
+    if (self.pendingChat > 0) {
+        NSInteger chatId = self.pendingChat;
+        self.pendingChat = 0;
+        [self openChat:chatId];
+    }
 }
 
 - (instancetype)initWithServer:(NSString *)server {
@@ -48,13 +54,6 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     if (self == nil) {
         return nil;
     }
-
-    [[UNUserNotificationCenter currentNotificationCenter]
-        requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound)
-                      completionHandler:^(BOOL granted, NSError *_Nullable error) {
-                          (void) granted;
-                          (void) error;
-                      }];
 
     NSString *stored = [[NSUserDefaults standardUserDefaults] stringForKey:kServerKey];
     _server = server.length > 0 ? server : (stored.length > 0 ? stored : kDefaultServer);
@@ -129,7 +128,16 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     } else if ([cmd isEqualToString:@"server"]) {
         [self promptServer];
     } else if ([cmd isEqualToString:@"notify"]) {
-        [self postNotice:payload[@"title"] body:payload[@"body"] count:[payload[@"count"] integerValue]];
+        NSInteger chatId = [payload[@"chat_id"] integerValue];
+        __weak typeof(self) weakSelf = self;
+        [ParlzNoticePanel showTitle:payload[@"title"]
+                               body:payload[@"body"]
+                              count:[payload[@"count"] integerValue]
+                             chatId:chatId
+                          avatarUrl:payload[@"avatar"]
+                             onOpen:^(NSInteger target) {
+                                 [weakSelf openChat:target];
+                             }];
     } else if ([cmd isEqualToString:@"badge"]) {
         [self showBadge:[payload[@"count"] integerValue]];
     }
@@ -150,24 +158,19 @@ static NSString *const kDefaultServer = @"https://chat.parlz.com";
     }
 }
 
-- (void)postNotice:(NSString *)title body:(NSString *)body count:(NSInteger)count {
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
-    [center getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
-        if (settings.authorizationStatus != UNAuthorizationStatusAuthorized) {
-            return;
-        }
-        UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
-        content.title = title.length > 0 ? title : @"Parlz";
-        content.body = body ?: @"";
-        if (count > 0) {
-            content.badge = @(count);
-        }
-        content.sound = [UNNotificationSound defaultSound];
-        UNTimeIntervalNotificationTrigger *trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.1 repeats:NO];
-        NSString *identifier = [NSString stringWithFormat:@"parlz-%.0f", [[NSDate date] timeIntervalSince1970] * 1000];
-        UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:trigger];
-        [center addNotificationRequest:request withCompletionHandler:nil];
-    }];
+- (void)openChat:(NSInteger)chatId {
+    [self.window makeKeyAndOrderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
+    if (chatId <= 0) {
+        return;
+    }
+    if (!self.pageReady || self.web == nil) {
+        self.pendingChat = chatId;
+        return;
+    }
+    self.pendingChat = 0;
+    NSString *js = [NSString stringWithFormat:@"window.ParlzOpenChat && window.ParlzOpenChat(%ld);", (long) chatId];
+    [self.web evaluateJavaScript:js completionHandler:nil];
 }
 
 - (void)beginSaveWithName:(NSString *)name mime:(NSString *)mime {

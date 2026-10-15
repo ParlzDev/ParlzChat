@@ -335,7 +335,9 @@ internal sealed class MainForm : Form
                 {
                     var title = root.TryGetProperty("title", out var t) ? t.GetString() ?? "Parlz" : "Parlz";
                     var body = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
-                    ShowTrayNotice(title, body, count);
+                    var chatId = root.TryGetProperty("chat_id", out var cid) && cid.TryGetInt32(out var parsedId) ? parsedId : 0;
+                    var avatar = root.TryGetProperty("avatar", out var av) ? av.GetString() ?? "" : "";
+                    ShowScreenNotice(title, body, count, chatId, avatar);
                 }
                 else if (cmd == "badge")
                 {
@@ -349,16 +351,25 @@ internal sealed class MainForm : Form
         ListenForLinks();
     }
 
-    private void ShowTrayNotice(string title, string body, int count)    {
-        if (tray == null)
-        {
-            return;
-        }
-
-        tray.ShowBalloonTip(5000, title, body, ToolTipIcon.None);
+    private void ShowScreenNotice(string title, string body, int count, int chatId, string avatar)
+    {
+        var notice = new NoticeForm(title, body, count, chatId, avatar, OpenChatFromNotice);
+        notice.Show();
         if (!Focused || !Visible || WindowState == FormWindowState.Minimized)
         {
             FlashTaskbar();
+        }
+    }
+
+    private void OpenChatFromNotice(int chatId)
+    {
+        ShowFromTray();
+        try
+        {
+            view.CoreWebView2?.PostWebMessageAsJson("{\"cmd\":\"open-chat\",\"id\":" + chatId + "}");
+        }
+        catch (Exception)
+        {
         }
     }
 

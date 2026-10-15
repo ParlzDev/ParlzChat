@@ -25,7 +25,7 @@ mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Resources"
 
 "$CC" -fobjc-arc -O2 -mmacosx-version-min=12.0 $FRAMEWORKS \
     -o "$OUT/Contents/MacOS/Parlz" \
-    Sources/main.m Sources/AppDelegate.m Sources/WebWindow.m
+    Sources/main.m Sources/AppDelegate.m Sources/WebWindow.m Sources/NoticePanel.m
 
 cp Resources/Info.plist "$OUT/Contents/Info.plist"
 if [ -f Resources/AppIcon.icns ]; then

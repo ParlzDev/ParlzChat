@@ -1,7 +1,12 @@
 import { esc } from './util.js';
 import { stickerByLabel } from './stickers.js';
+import { parsePz } from './pz.js';
 
-const TOKEN_RE = /\[([^\[\]<>]{1,12})\]|@([^\s@<>&]{1,24})|(https?:\/\/[^\s<>"']+)/g;
+const TOKEN_RE = /\[([^\[\]<>]{1,12})\]|@([^\s@<>&]{1,24})|(https?:\/\/[^\s<>"']+)|(pz:[A-Za-z0-9:/?&=%_.-]+)/gi;
+
+export function pzHttpUrl(command) {
+  return window.location.origin + '/index.php?pz=' + encodeURIComponent(command);
+}
 
 export function trimUrl(value) {
   let url = value;
@@ -109,9 +114,17 @@ export function renderBody(text, myNickname = '') {
       html += svg === '' ? esc(match[0]) : '<span class="sticker-inline">' + svg + '</span>';
     } else if (match[2] !== undefined) {
       html += '<span class="mention' + (myNickname !== '' && match[2] === myNickname ? ' mention-me' : '') + '">@' + esc(match[2]) + '</span>';
-    } else {
+    } else if (match[3] !== undefined) {
       const url = trimUrl(match[3]);
       html += '<a class="link-out" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + esc(url) + '</a>' + esc(match[3].slice(url.length));
+    } else {
+      const command = trimUrl(match[4]);
+      if (parsePz(command) === null) {
+        html += esc(match[4]);
+      } else {
+        const url = pzHttpUrl(command);
+        html += '<a class="link-out" href="' + esc(url) + '">' + esc(url) + '</a>' + esc(match[4].slice(command.length));
+      }
     }
     last = match.index + match[0].length;
     match = TOKEN_RE.exec(raw);

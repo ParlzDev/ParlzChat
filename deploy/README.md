@@ -58,3 +58,14 @@
 现在 js/css 单独一条 `expires -1`（即 `Cache-Control: no-cache`，靠 ETag 走 304），图片/字体仍 300d。改完 vhost 必须 `docker exec 1Panel-openresty-kHxh nginx -t` 通过再 `nginx -s reload`；1Panel 在控制台改站点设置会重写这个文件，改坏了用同目录 `chat.parlz.com.conf.bak-cachefix` 回滚。
 
 已经在 300 天缓存里躺着旧 `util.js`/`messages.js` 的客户端不会自动回来取新文件，需要清一次缓存：Android 壳 = 系统设置→应用→Parlz→存储→清除缓存；Windows 壳 = 删 `%LOCALAPPDATA%\Parlz\WebView2\Default\Cache`；iPhone Safari = 设置→Safari→清除历史记录与网站数据；桌面浏览器 Ctrl+F5。
+
+## 多地备份（2026-10-15）
+
+脚本：`deploy/backup/snapshot.php`（在 PHP 容器里跑：`wal_checkpoint(TRUNCATE)` → `VACUUM INTO` → 校验 `integrity_check` → gzip + manifest）与 `deploy/backup/backup.sh`（宿主上跑：调用容器出快照 → 本机 `sha256sum -c` 校验 → scp 到异地并回读校验）。
+
+- 备份目录：本机 `/www/backups/parlz`，异地 `/www/backups/parlz`（`root@38.76.190.153:6666`，已用 chat 服务器自己的 `~/.ssh/id_ed25519` 免密）
+- 每次一份：`parlz-<stamp>.sqlite.gz` + `.manifest.json`（含 sha256、计数、integrity）+ `config.php` / `mail.json` / `turn-config.json` 的副本；`PARLZ_BACKUP_FILES=1` 时才连 `assets/uploads`、`assets/avatars` 一起打包
+- 保留份数 `PARLZ_BACKUP_KEEP`（默认 14）；日志 `/www/backups/parlz/backup.log`
+- 定时：root crontab `10 4,16 * * * sh /www/sites/chat.parlz.com/index/deploy/backup/backup.sh`（异地把不通时会记 WARN 并保留本机快照，不让 cron 失败刷屏）
+- 判据：`tests/backup_e2e.sh`（跑真备份并核对：本机/异地 sha256 一致、manifest 计数与线上库一致、解档后 `integrity_check` 为 ok、keep 生效）
+- 恢复：`gunzip -c parlz-<stamp>.sqlite.gz > data/parlz.sqlite`（先停写或直接覆盖后重启 PHP 容器）

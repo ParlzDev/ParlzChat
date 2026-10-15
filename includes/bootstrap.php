@@ -10,6 +10,7 @@ require __DIR__ . '/queries.php';
 require __DIR__ . '/stt.php';
 require __DIR__ . '/mail.php';
 require __DIR__ . '/email.php';
+require __DIR__ . '/push.php';
 require __DIR__ . '/miniapp.php';
 
 function parlz_fail_soft(): void

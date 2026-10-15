@@ -2087,6 +2087,31 @@
   padding-bottom: 0;
 }
 
+.setting-row > div {
+  min-width: 0;
+}
+
+.setting-row > .btn,
+.setting-row .segmented {
+  flex: none;
+  white-space: nowrap;
+}
+
+.setting-row .segmented button {
+  white-space: nowrap;
+}
+
+.check-verdict {
+  flex: none;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.check-detail {
+  word-break: break-word;
+  white-space: normal;
+}
+
 .setting-title {
   font-weight: 600;
 }
@@ -2536,7 +2561,7 @@
 
 @media (max-width: 900px) {
   .page-body {
-    padding: 12px 16px 28px;
+    padding: 12px 16px calc(84px + env(safe-area-inset-bottom));
   }
 
   .post-card {
@@ -3111,4 +3136,98 @@
   min-width: 0;
   font-size: 12px;
   color: var(--text-dim);
+}
+
+.notice-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 70;
+}
+
+.notice-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 292px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(2.4);
+  cursor: pointer;
+  transform: translateX(110%);
+  transition: transform 180ms linear;
+}
+
+.notice-card.is-in {
+  transform: translateX(0);
+}
+
+.notice-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice-text {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice-count {
+  flex: none;
+  min-width: 20px;
+  padding: 2px 6px;
+  text-align: center;
+  font-size: 11px;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--on-green);
+  font-weight: 700;
+}
+
+.notice-close {
+  flex: none;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.notice-card:hover .notice-close {
+  color: var(--green-ink);
+}
+
+@media (max-width: 900px) {
+  .notice-stack {
+    top: calc(env(safe-area-inset-top) + 8px);
+    bottom: auto;
+    left: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+
+  .notice-card {
+    width: auto;
+    transform: translateY(-140%);
+  }
+
+  .notice-card.is-in {
+    transform: translateY(0);
+  }
 }

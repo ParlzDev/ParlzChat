@@ -451,6 +451,20 @@ function push_message(int $chatId, int $userId, string $body, string $kind = 'te
         LEFT JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = m.user_id
         WHERE m.id = ?');
     $stmt->execute([$id]);
+
+    $senderName = '';
+    $senderStmt = $pdo->prepare('SELECT nickname FROM users WHERE id = ?');
+    $senderStmt->execute([$userId]);
+    $senderName = (string)$senderStmt->fetchColumn();
+    $chatTitle = '';
+    $chatStmt = $pdo->prepare('SELECT type, name FROM chats WHERE id = ?');
+    $chatStmt->execute([$chatId]);
+    $chatRow = $chatStmt->fetch();
+    if ($chatRow !== false && (string)$chatRow['type'] === 'group') {
+        $chatTitle = (string)$chatRow['name'];
+    }
+    push_chat_message($chatId, $userId, $senderName, $chatTitle, push_preview($kind, $body), $kind);
+
     return message_payload($stmt->fetch());
 }
 

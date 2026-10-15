@@ -2,7 +2,7 @@ import { state, on } from './state.js';
 import { $, esc, avatarHtml, toast, uidName, fmtSize, uploadUrl, downloadFile } from './util.js';
 import { apiGet, apiPost } from './api.js';
 import { uploadFile } from './upload.js';
-import { stickerNames, stickerSvg, stickerToken } from './stickers.js';
+import { stickerSvg, stickerToken, staticStickerNames, animatedStickerNames } from './stickers.js';
 import { quotePreview } from './richtext.js';
 import { icon } from './icons.js';
 import * as cut from './cut.js';
@@ -722,7 +722,11 @@ export function init() {
     '<div class="sticker-head">我的表情</div>' +
     '<div class="my-stickers" id="my-stickers"></div>' +
     '<div class="sticker-head">默认表情</div>' +
-    stickerNames()
+    staticStickerNames()
+      .map((name) => '<button type="button" class="sticker-item" data-sticker="' + name + '" title="插入表情">' + stickerSvg(name) + '</button>')
+      .join('') +
+    '<div class="sticker-head">动态表情</div>' +
+    animatedStickerNames()
       .map((name) => '<button type="button" class="sticker-item" data-sticker="' + name + '" title="插入表情">' + stickerSvg(name) + '</button>')
       .join('');
   loadMyStickers();

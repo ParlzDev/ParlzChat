@@ -131,10 +131,123 @@ export const stickers = {
     '<path d="M16 16v-5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
     '<path d="M16 4.6c1.1 0 1.9-1 1.9-2.1 0-1.3-1.9-2.5-1.9-2.5s-1.9 1.2-1.9 2.5c0 1.1.8 2.1 1.9 2.1z" fill="var(--sticker-fill)"/>' +
     '</svg>',
+  paw: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<ellipse cx="16" cy="21.4" rx="5.4" ry="4.6" fill="var(--sticker-fill)"/>' +
+    '<circle cx="9.2" cy="14.2" r="2.2" fill="currentColor"/>' +
+    '<circle cx="13.8" cy="10.8" r="2.3" fill="currentColor"/>' +
+    '<circle cx="18.4" cy="10.8" r="2.3" fill="currentColor"/>' +
+    '<circle cx="23" cy="14.2" r="2.2" fill="currentColor"/>' +
+    '</svg>',
+  bunny: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<path d="M11.4 13.6C9.8 9.6 9.4 4.6 11.6 3.4c2.2-1.2 3.6 3.2 3.8 7.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+    '<path d="M20.6 13.6c1.6-4 2-9-.2-10.2-2.2-1.2-3.6 3.2-3.8 7.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+    '<circle cx="16" cy="19.6" r="8.2" fill="var(--sticker-fill)"/>' +
+    '<circle cx="13" cy="18.2" r="1.2" fill="var(--on-green)"/>' +
+    '<circle cx="19" cy="18.2" r="1.2" fill="var(--on-green)"/>' +
+    '<path d="M14.8 22.2c.7.9 1.7.9 2.4 0" fill="none" stroke="var(--on-green)" stroke-width="1.6" stroke-linecap="round"/>' +
+    '</svg>',
+  ghost: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<path d="M8 24.6V15.4a8 8 0 0 1 16 0v9.2l-2.6-2-2.7 2-2.7-2-2.7 2z" fill="var(--sticker-fill)"/>' +
+    '<circle cx="13" cy="14.6" r="1.3" fill="var(--on-green)"/>' +
+    '<circle cx="19" cy="14.6" r="1.3" fill="var(--on-green)"/>' +
+    '<path d="M13.8 18.8c1.4 1.2 3 1.2 4.4 0" fill="none" stroke="var(--on-green)" stroke-width="1.6" stroke-linecap="round"/>' +
+    '</svg>',
+  gift: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<rect x="6.4" y="13.6" width="19.2" height="12.8" rx="1.6" fill="var(--sticker-fill)"/>' +
+    '<rect x="4.6" y="9.6" width="22.8" height="5" rx="1.6" fill="none" stroke="currentColor" stroke-width="2"/>' +
+    '<path d="M16 9.6v16.8" fill="none" stroke="var(--on-green)" stroke-width="2"/>' +
+    '<path d="M16 9.4c-2.6 0-5-1.4-5-3.4 0-1.6 1.4-2.4 2.8-2 1.6.5 2.2 2.6 2.2 5.4zM16 9.4c2.6 0 5-1.4 5-3.4 0-1.6-1.4-2.4-2.8-2-1.6.5-2.2 2.6-2.2 5.4z" fill="var(--sticker-fill)"/>' +
+    '</svg>',
+  coffee: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<path d="M7.4 13.2h14.4v6.6a6 6 0 0 1-6 6h-2.4a6 6 0 0 1-6-6z" fill="var(--sticker-fill)"/>' +
+    '<path d="M21.8 15h2.2a2.8 2.8 0 0 1 0 5.6h-2.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+    '<path d="M11.4 9.4c0-1.4 1.4-1.6 1.4-3M16 9.4c0-1.4 1.4-1.6 1.4-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '</svg>',
+  thumbsup: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<path d="M11 14.6l4.4-9.2c2 0 3.2 1.4 3.2 3.4 0 1.6-.6 3-1 4.2h5.6c1.8 0 3 1.6 2.6 3.4l-1.8 7.4c-.3 1.3-1.4 2.2-2.8 2.2H11z" fill="var(--sticker-fill)"/>' +
+    '<rect x="4.6" y="14.6" width="5.2" height="11.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="2"/>' +
+    '</svg>',
+  beat: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<g transform="translate(16 16)"><g>' +
+    '<circle cx="-2.4" cy="-1.6" r="2.8" fill="var(--sticker-fill)"/>' +
+    '<circle cx="2.4" cy="-1.6" r="2.8" fill="var(--sticker-fill)"/>' +
+    '<path d="M-4.9-0.4L0 4.8 4.9-0.4z" fill="var(--sticker-fill)"/>' +
+    '<animateTransform attributeName="transform" type="scale" values="1;1.16;1" keyTimes="0;0.42;1" dur="1.1s" repeatCount="indefinite"/>' +
+    '</g></g>' +
+    '</svg>',
+  twinkle: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<g transform="translate(15.4 16)"><g>' +
+    '<path d="M0-9.2L2.4-2.4 9.2 0 2.4 2.4 0 9.2-2.4 2.4-9.2 0-2.4-2.4z" fill="var(--sticker-fill)"/>' +
+    '<animateTransform attributeName="transform" type="scale" values="1;0.7;1" keyTimes="0;0.5;1" dur="1.6s" repeatCount="indefinite"/>' +
+    '</g></g>' +
+    '<circle cx="25.2" cy="8.4" r="1.7" fill="currentColor">' +
+    '<animate attributeName="opacity" values="1;0.15;1" dur="1.5s" repeatCount="indefinite"/>' +
+    '</circle>' +
+    '<circle cx="6.6" cy="23.6" r="1.4" fill="currentColor">' +
+    '<animate attributeName="opacity" values="0.15;1;0.15" dur="1.7s" repeatCount="indefinite"/>' +
+    '</circle>' +
+    '</svg>',
+  blaze: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<g transform="translate(16 26.4)"><g>' +
+    '<g transform="translate(-16 -26.4)">' +
+    '<path d="M16 3.2c4.6 4.6 7.6 8.2 7.6 13a7.6 7.6 0 0 1-15.2 0c0-2.6 1-5 2.6-7.2.6 1.8 1.6 2.8 2.8 3.2-.4-3.4.2-6.6 2.2-9z" fill="var(--sticker-fill)"/>' +
+    '</g>' +
+    '<animateTransform attributeName="transform" type="scale" values="1 1;1.05 1.12;1 1" keyTimes="0;0.5;1" dur="0.85s" repeatCount="indefinite"/>' +
+    '</g></g>' +
+    '</svg>',
+  sunny: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<g transform="translate(16 16)">' +
+    '<g>' +
+    '<path d="M0-11.6V-8.4M8.2-8.2L6-6M11.6 0H8.4M8.2 8.2L6 6M0 11.6V8.4M-8.2 8.2L-6 6M-11.6 0H-8.4M-8.2-8.2L-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+    '<animateTransform attributeName="transform" type="rotate" values="0;360" dur="9s" repeatCount="indefinite"/>' +
+    '</g>' +
+    '<circle r="6.4" fill="var(--sticker-fill)"/>' +
+    '</g>' +
+    '</svg>',
+  rainy: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<path d="M10.4 18.4a4.6 4.6 0 0 1 .7-9.1 6.4 6.4 0 0 1 12.2 1.7 4 4 0 0 1-1 7.4z" fill="var(--sticker-fill)"/>' +
+    '<line x1="12.4" y1="22.6" x2="12.4" y2="25.6" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+    '<animate attributeName="opacity" values="0;1;0" dur="1.3s" repeatCount="indefinite"/>' +
+    '<animateTransform attributeName="transform" type="translate" values="0 -2;0 2.6" dur="1.3s" repeatCount="indefinite"/>' +
+    '</line>' +
+    '<line x1="17" y1="22.6" x2="17" y2="25.6" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+    '<animate attributeName="opacity" values="0;1;0" dur="1.3s" begin="0.35s" repeatCount="indefinite"/>' +
+    '<animateTransform attributeName="transform" type="translate" values="0 -2;0 2.6" dur="1.3s" begin="0.35s" repeatCount="indefinite"/>' +
+    '</line>' +
+    '<line x1="21.6" y1="22.6" x2="21.6" y2="25.6" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+    '<animate attributeName="opacity" values="0;1;0" dur="1.3s" begin="0.7s" repeatCount="indefinite"/>' +
+    '<animateTransform attributeName="transform" type="translate" values="0 -2;0 2.6" dur="1.3s" begin="0.7s" repeatCount="indefinite"/>' +
+    '</line>' +
+    '</svg>',
+  note: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<g transform="translate(16.4 16.6)"><g>' +
+    '<path d="M1 5V-9.6c3 1.2 5.4 2.8 6 5.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+    '<ellipse cx="-2.2" cy="5.4" rx="3.4" ry="2.8" fill="var(--sticker-fill)"/>' +
+    '<animateTransform attributeName="transform" type="translate" values="0 0;0 -2.4;0 0" keyTimes="0;0.5;1" dur="0.9s" repeatCount="indefinite"/>' +
+    '</g></g>' +
+    '</svg>',
+  candle: '<svg viewBox="0 0 32 32" class="sticker-svg" aria-hidden="true">' +
+    '<rect x="10.6" y="14.4" width="10.8" height="14.6" rx="1.6" fill="var(--sticker-fill)"/>' +
+    '<path d="M16 12.6c1.7 0 3-1.5 3-3.3 0-2.1-3-4.9-3-4.9s-3 2.8-3 4.9c0 1.8 1.3 3.3 3 3.3z" fill="currentColor">' +
+    '<animateTransform attributeName="transform" type="scale" values="1;1.12 0.94;1" keyTimes="0;0.5;1" dur="0.7s" repeatCount="indefinite" additive="sum"/>' +
+    '<animate attributeName="opacity" values="1;0.75;1" dur="0.7s" repeatCount="indefinite"/>' +
+    '</path>' +
+    '<path d="M16 12.4V9" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
+    '</svg>',
 };
 
 export function stickerNames() {
   return Object.keys(stickers);
+}
+
+const ANIMATED = ['beat', 'twinkle', 'blaze', 'sunny', 'rainy', 'note', 'candle'];
+
+export function animatedStickerNames() {
+  return ANIMATED.slice();
+}
+
+export function staticStickerNames() {
+  return stickerNames().filter((name) => ANIMATED.indexOf(name) === -1);
 }
 
 export function stickerSvg(name) {
@@ -171,6 +284,19 @@ const LABELS = {
   moon: '月亮',
   fire: '火',
   cake: '蛋糕',
+  paw: '爪印',
+  bunny: '兔子',
+  ghost: '幽灵',
+  gift: '礼物',
+  coffee: '咖啡',
+  thumbsup: '点赞',
+  beat: '心跳',
+  twinkle: '闪亮',
+  blaze: '火爆',
+  sunny: '太阳',
+  rainy: '下雨',
+  note: '音符',
+  candle: '蜡烛',
 };
 
 const NAME_BY_LABEL = {};
