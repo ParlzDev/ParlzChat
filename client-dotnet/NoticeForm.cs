@@ -18,6 +18,7 @@ internal sealed class NoticeForm : Form
     private readonly int count;
     private readonly string avatarUrl;
     private Image? avatar;
+    private static Image? appIcon;
     private Rectangle closeBox;
     private bool closing;
 
@@ -92,6 +93,28 @@ internal sealed class NoticeForm : Form
         }
     }
 
+    private static Image? AppIcon()
+    {
+        if (appIcon != null)
+        {
+            return appIcon;
+        }
+        try
+        {
+            using var stream = typeof(NoticeForm).Assembly.GetManifestResourceStream("Parlz.Resources.ParlzIcon.png");
+            if (stream == null)
+            {
+                return null;
+            }
+            appIcon = Image.FromStream(stream);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+        return appIcon;
+    }
+
     private static GraphicsPath Rounded(Rectangle rect, int radius)
     {
         var path = new GraphicsPath();
@@ -150,6 +173,10 @@ internal sealed class NoticeForm : Form
         }
 
         var avatarBox = new Rectangle(14, 20, 66, 66);
+        if (avatar == null)
+        {
+            avatar = AppIcon();
+        }
         if (avatar != null)
         {
             using var clip = Rounded(avatarBox, 33);

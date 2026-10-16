@@ -144,7 +144,7 @@ export function systemNotify(title, body, count = 0, extra = null) {
     return;
   }
   try {
-    const note = new window.Notification(head, { body: text, tag: 'parlz-message' });
+    const note = new window.Notification(head, { body: text, tag: 'parlz-message', icon: window.location.origin + '/assets/img/app-icon.png', badge: window.location.origin + '/assets/img/app-icon.png' });
     window.setTimeout(() => note.close(), 6000);
   } catch (error) {
     return;

@@ -61,6 +61,7 @@ $boot = [
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Parlz · 聊天</title>
 <link rel="icon" type="image/svg+xml" href="<?= asset('assets/img/favicon.svg') ?>">
+<link rel="apple-touch-icon" href="<?= asset('assets/img/app-icon.png') ?>">
 <script src="<?= asset('assets/scripts/theme-boot.js') ?>"></script>
 <link rel="stylesheet" href="<?= asset('assets/style/base.css') ?>">
 <link rel="stylesheet" href="<?= asset('assets/style/auth.css') ?>">

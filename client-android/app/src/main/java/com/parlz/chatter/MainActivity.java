@@ -110,6 +110,7 @@ public class MainActivity extends Activity {
         }
 
         load(server);
+        startPushService();
         handleLaunchIntent(getIntent());
     }
 
@@ -128,6 +129,24 @@ public class MainActivity extends Activity {
         if (!need.isEmpty()) {
             requestPermissions(need.toArray(new String[0]), REQ_PERMS);
         }
+    }
+
+    private void startPushService() {
+        Intent service = new Intent(this, PushService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(service);
+        } else {
+            startService(service);
+        }
+    }
+
+    private void openPendingChat() {
+        int chatId = getIntent() == null ? 0 : getIntent().getIntExtra("chat_id", 0);
+        if (chatId <= 0 || web == null) {
+            return;
+        }
+        getIntent().removeExtra("chat_id");
+        web.evaluateJavascript("window.ParlzOpenChat && window.ParlzOpenChat(" + chatId + ");", null);
     }
 
     private void ensureNotifyChannel() {
@@ -235,6 +254,7 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleLaunchIntent(intent);
+        openPendingChat();
     }
 
     private String normalizeServer(String raw) {
@@ -327,6 +347,7 @@ public class MainActivity extends Activity {
         public void onPageFinished(WebView view, String url) {
             errorDialogShown = false;
             pageReady = true;
+            openPendingChat();
             if (!pendingPz.isEmpty()) {
                 deliverPz(pendingPz);
                 pendingPz = "";
